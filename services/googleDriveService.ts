@@ -2,7 +2,8 @@ import { ProjectData, DriveFile } from '../types';
 
 // Helper to get ID from Env OR LocalStorage
 const getClientId = () => {
-  return process.env.GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';
+  // Safe access using optional chaining
+  return import.meta.env?.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';
 };
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';

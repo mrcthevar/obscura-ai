@@ -9,7 +9,8 @@ const getApiKey = (): string => {
   if (storedKey) return storedKey;
 
   // 2. Fallback to System Key (if configured in deployment)
-  const envKey = process.env.API_KEY;
+  // Safe access using optional chaining
+  const envKey = import.meta.env?.VITE_GEMINI_API_KEY;
   if (envKey && envKey.length > 0 && envKey !== 'undefined') {
     return envKey;
   }

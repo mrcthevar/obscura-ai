@@ -63,3 +63,15 @@ export interface DriveFile {
   name: string;
   modifiedTime?: string;
 }
+
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_GEMINI_API_KEY?: string;
+    readonly VITE_GOOGLE_CLIENT_ID?: string;
+    [key: string]: string | undefined;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+}

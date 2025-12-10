@@ -16,7 +16,8 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   const [showConfig, setShowConfig] = useState(false);
   const [manualClientId, setManualClientId] = useState('');
   
-  const ENV_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+  // Safe access using optional chaining
+  const ENV_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '';
   const STORED_CLIENT_ID = localStorage.getItem('obscura_client_id') || '';
   const ACTIVE_CLIENT_ID = ENV_CLIENT_ID || STORED_CLIENT_ID;
 

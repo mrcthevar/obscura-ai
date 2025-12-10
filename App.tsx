@@ -22,7 +22,8 @@ const App: React.FC = () => {
 
   // Helper to check if we have API keys to run the dashboard
   const checkAccess = (userProfile: UserProfile) => {
-    const envKey = process.env.API_KEY;
+    // Safe access using optional chaining
+    const envKey = import.meta.env?.VITE_GEMINI_API_KEY;
     const storedKey = localStorage.getItem('gemini_api_key');
 
     // If we have an API Key (Environment or Local Storage), go to Dashboard
