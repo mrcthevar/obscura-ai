@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>OBSCURA.AI | Cinematic Intelligence Suite</title>
+    <meta name="title" content="OBSCURA.AI | Cinematic Intelligence Suite">
+    <meta name="description" content="AI-powered filmmaking assistant. Generate professional storyboards, reverse-engineer lighting setups, analyze scripts, and create director's treatments using Gemini 3 Pro.">
+    <meta name="theme-color" content="#050505">
+
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&family=Patrick+Hand&display=swap" rel="stylesheet">
+    
+    <style>
+      body {
+        background-color: #050505;
+        color: #E0E0E0;
+        font-family: 'Inter', sans-serif;
+        overflow-x: hidden;
+      }
+      h1, h2, h3, .cinematic-text {
+        font-family: 'Cinzel', serif;
+      }
+      .handwritten {
+        font-family: 'Patrick Hand', cursive;
+      }
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0a0a0a; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #FFD700; }
+      
+      .prose h1, .prose h2, .prose h3 { font-family: 'Cinzel', serif; color: #FFD700; margin-top: 1.5em; margin-bottom: 0.5em; }
+      .prose strong { color: white; }
+      .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+      .prose li { margin-bottom: 0.5em; }
+      .prose table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+      .prose th, .prose td { border: 1px solid #333; padding: 8px; text-align: left; }
+      .prose th { color: #FFD700; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.32.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.7",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
