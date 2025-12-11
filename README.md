@@ -37,8 +37,8 @@ Welcome to the **OBSCURA.AI** setup guide. Follow these steps to make your appli
    - **Build command**: `npm run build`
    - **Output directory**: `dist`
 5. **Environment Variables**:
-   - Add variable `GOOGLE_CLIENT_ID` = (Paste your Client ID from Phase 1)
-   - **IMPORTANT**: Do NOT add an `API_KEY` variable if you want users to provide their own keys. If you leave this empty, the app will automatically show the "Gatekeeper" screen to users.
+   - Add variable `VITE_GOOGLE_CLIENT_ID` = (Paste your Client ID from Phase 1)
+   - **IMPORTANT**: Do NOT add a `VITE_GEMINI_API_KEY` variable if you want users to provide their own keys. If you leave this empty, the app will automatically show the "Gatekeeper" screen to users.
 6. Click **Save and Deploy**.
 
 ### 3. Final Connection

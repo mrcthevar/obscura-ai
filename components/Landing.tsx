@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { UserProfile } from '../types';
 
 declare global {
@@ -14,12 +14,13 @@ interface LandingProps {
 const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
-  const [manualClientId, setManualClientId] = useState('');
   
-  // Safe access using optional chaining
-  const ENV_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '';
-  const STORED_CLIENT_ID = localStorage.getItem('obscura_client_id') || '';
-  const ACTIVE_CLIENT_ID = ENV_CLIENT_ID || STORED_CLIENT_ID;
+  // Initialize state from Storage or Env
+  const [activeClientId, setActiveClientId] = useState<string>(() => {
+     return import.meta.env?.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';
+  });
+  
+  const [manualClientId, setManualClientId] = useState('');
 
   const decodeJwt = (token: string): any => {
     try {
@@ -35,7 +36,7 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
     }
   };
 
-  const handleCredentialResponse = (response: any) => {
+  const handleCredentialResponse = useCallback((response: any) => {
     if (response.credential) {
       const payload = decodeJwt(response.credential);
       if (payload) {
@@ -48,7 +49,7 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
         onSignIn(user);
       }
     }
-  };
+  }, [onSignIn]);
 
   const handleGuestLogin = () => {
     const guestUser: UserProfile = {
@@ -63,44 +64,59 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (manualClientId.trim()) {
-      localStorage.setItem('obscura_client_id', manualClientId.trim());
-      window.location.reload();
+      const newId = manualClientId.trim();
+      localStorage.setItem('obscura_client_id', newId);
+      setActiveClientId(newId); // Update state immediately
+      setShowConfig(false); // Close config
     }
   };
 
   const handleClearConfig = () => {
     localStorage.removeItem('obscura_client_id');
-    window.location.reload();
+    setActiveClientId(import.meta.env?.VITE_GOOGLE_CLIENT_ID || '');
+    window.location.reload(); // Clean reload to clear GSI state
   };
 
+  // Initialize Google Button whenever Client ID changes
   useEffect(() => {
-    if (!ACTIVE_CLIENT_ID) return;
+    if (!activeClientId) return;
 
-    if (window.google) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: ACTIVE_CLIENT_ID,
-          callback: handleCredentialResponse,
-          auto_select: false,
-          cancel_on_tap_outside: true
-        });
+    // Retry mechanism to wait for Google Script
+    const initGSI = () => {
+      if (window.google && window.google.accounts) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: activeClientId,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+            theme: 'filled_black'
+          });
 
-        const parent = document.getElementById('google-btn-wrapper');
-        if (parent) {
-           window.google.accounts.id.renderButton(parent, {
-             theme: 'filled_black',
-             size: 'large',
-             shape: 'pill',
-             width: '280',
-             logo_alignment: 'left'
-           });
+          const parent = document.getElementById('google-btn-wrapper');
+          if (parent) {
+             // Clear previous contents if any
+             parent.innerHTML = '';
+             window.google.accounts.id.renderButton(parent, {
+               theme: 'filled_black',
+               size: 'large',
+               shape: 'pill',
+               width: '280',
+               logo_alignment: 'left'
+             });
+          }
+        } catch (e) {
+          console.error("GSI Initialization Error:", e);
+          setError("Could not load Google Sign-In. Verify Client ID.");
         }
-      } catch (e) {
-        console.error("GSI Initialization Error:", e);
-        setError("Could not load Google Sign-In.");
+      } else {
+        // Retry if script not yet loaded
+        setTimeout(initGSI, 500);
       }
-    }
-  }, [ACTIVE_CLIENT_ID, showConfig]);
+    };
+
+    initGSI();
+  }, [activeClientId, handleCredentialResponse]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-[#050505] font-inter">
@@ -112,12 +128,12 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
       <div className="relative z-10 max-w-5xl w-full px-6 flex flex-col items-center animate-fade-in-up">
         
         {/* Brand Section */}
-        <div className="text-center mb-12 space-y-4">
-          <h1 className="text-6xl md:text-9xl font-cinzel text-white tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+        <div className="text-center mb-8 space-y-3">
+          <h1 className="text-3xl md:text-5xl font-cinzel text-white tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
             OBSCURA<span className="text-[#FFD700]">.AI</span>
           </h1>
-          <div className="h-px w-32 bg-gradient-to-r from-transparent via-[#FFD700] to-transparent mx-auto opacity-50"></div>
-          <p className="text-lg md:text-xl text-neutral-400 font-light tracking-[0.2em] uppercase">
+          <div className="h-px w-24 bg-gradient-to-r from-transparent via-[#FFD700] to-transparent mx-auto opacity-50"></div>
+          <p className="text-xs md:text-sm text-neutral-400 font-light tracking-[0.3em] uppercase">
             Cinematic Intelligence Suite
           </p>
         </div>
@@ -145,12 +161,12 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
 
           {/* 1. Google Button */}
           <div className="w-full min-h-[44px] flex justify-center">
-             {ACTIVE_CLIENT_ID ? (
-               <div id="google-btn-wrapper" className="w-full flex justify-center"></div>
+             {activeClientId ? (
+               <div id="google-btn-wrapper" className="w-full flex justify-center min-h-[40px]"></div>
              ) : (
                <button 
-                 onClick={() => setShowConfig(!showConfig)}
-                 className="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 py-3 px-6 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2"
+                 onClick={() => setShowConfig(true)}
+                 className="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 py-3 px-6 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 border border-transparent hover:border-red-900"
                >
                  <span>⚠ CONFIG REQUIRED</span>
                </button>
@@ -189,17 +205,17 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
               <button onClick={() => setShowConfig(!showConfig)} className="hover:text-white transition-colors">System Config</button>
            </div>
            
-           {/* Hidden Config Panel */}
+           {/* Config Panel */}
            {showConfig && (
-             <div className="mt-4 p-4 bg-neutral-900 border border-neutral-800 rounded animate-fade-in w-full max-w-md">
+             <div className="mt-4 p-4 bg-neutral-900 border border-neutral-800 rounded animate-fade-in w-full max-w-md shadow-xl z-20">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-[#FFD700] text-xs font-bold uppercase">Manual Override</h3>
-                  {ACTIVE_CLIENT_ID && (
-                    <button onClick={handleClearConfig} className="text-[10px] text-red-500 hover:underline">Clear Config</button>
+                  {activeClientId && (
+                    <button onClick={handleClearConfig} className="text-[10px] text-red-500 hover:underline">Reset Config</button>
                   )}
                 </div>
                 
-                {!ACTIVE_CLIENT_ID ? (
+                {!activeClientId ? (
                   <form onSubmit={handleManualSubmit} className="flex gap-2">
                     <input 
                       type="text" 
@@ -213,10 +229,14 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
                     </button>
                   </form>
                 ) : (
-                  <div className="text-green-500 text-xs font-mono break-all">
-                    Active Client ID: {ACTIVE_CLIENT_ID.substring(0, 15)}...
+                  <div className="text-green-500 text-xs font-mono break-all p-2 bg-black rounded border border-neutral-800">
+                    Active Client ID: <br/>
+                    {activeClientId.substring(0, 15)}...
                   </div>
                 )}
+                <div className="mt-2 text-[9px] text-neutral-500">
+                  Client ID must be authorized for this origin in Google Cloud Console.
+                </div>
              </div>
            )}
         </div>
