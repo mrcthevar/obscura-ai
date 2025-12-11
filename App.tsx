@@ -4,10 +4,16 @@ import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
 import Gatekeeper from './components/Gatekeeper';
 import FlashlightCursor from './components/FlashlightCursor';
+import { ApiKeyContext } from './contexts/ApiKeyContext';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.LANDING);
   const [user, setUser] = useState<UserProfile | null>(null);
+  
+  // Initialize API Key from Storage or Env
+  const [apiKey, setApiKey] = useState<string>(() => {
+    return localStorage.getItem('gemini_api_key') || import.meta.env?.VITE_GEMINI_API_KEY || '';
+  });
 
   useEffect(() => {
     // Check local storage on mount
@@ -22,12 +28,8 @@ const App: React.FC = () => {
 
   // Helper to check if we have API keys to run the dashboard
   const checkAccess = (userProfile: UserProfile) => {
-    // Safe access using optional chaining
-    const envKey = import.meta.env?.VITE_GEMINI_API_KEY;
-    const storedKey = localStorage.getItem('gemini_api_key');
-
-    // If we have an API Key (Environment or Local Storage), go to Dashboard
-    if (envKey || storedKey) {
+    // We check the state 'apiKey' which is already initialized from storage/env
+    if (apiKey) {
       setAppState(AppState.DASHBOARD);
     } else {
       // If we are logged in (Guest or Google) but have NO API Key, go to Gatekeeper
@@ -50,6 +52,7 @@ const App: React.FC = () => {
 
   const handleGatekeeperSubmit = (key: string) => {
     localStorage.setItem('gemini_api_key', key);
+    setApiKey(key); // Update Context
     setAppState(AppState.DASHBOARD);
   };
 
@@ -61,7 +64,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <>
+    <ApiKeyContext.Provider value={apiKey}>
       <FlashlightCursor />
       
       {appState === AppState.LANDING && (
@@ -75,7 +78,7 @@ const App: React.FC = () => {
       {appState === AppState.DASHBOARD && user && (
         <Dashboard user={user} onLogout={handleLogout} />
       )}
-    </>
+    </ApiKeyContext.Provider>
   );
 };
 

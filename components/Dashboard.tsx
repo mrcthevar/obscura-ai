@@ -32,12 +32,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   // Initialize Drive Auth on Mount
   useEffect(() => {
     const initialize = async () => {
-      await initDriveAuth((token) => {
-        setIsDriveConnected(true);
-      });
-      // Check if we already have a token in local storage
+      // Check if we already have a token first to set initial state
       if (hasDriveToken()) {
           setIsDriveConnected(true);
+      }
+      
+      // Wait for script to ensure we can refresh/init if needed
+      // but don't block UI if offline or script fails
+      try {
+        await initDriveAuth((token) => {
+           setIsDriveConnected(true);
+        });
+      } catch (e) {
+        console.warn("Drive init non-fatal error", e);
       }
     };
     initialize();
@@ -84,6 +91,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       localStorage.setItem('obscura_module_history', JSON.stringify(updatedHistory));
       return updatedHistory;
     });
+  };
+
+  const handleUpdateLastLog = (moduleId: ModuleId, updatedResult: string) => {
+     setModuleHistory(prev => {
+        const list = prev[moduleId] || [];
+        if (list.length === 0) return prev; // No history to update
+        
+        const newList = [...list];
+        newList[newList.length - 1] = updatedResult; // Replace last item
+        
+        const updatedHistory = { ...prev, [moduleId]: newList };
+        localStorage.setItem('obscura_module_history', JSON.stringify(updatedHistory));
+        return updatedHistory;
+     });
   };
 
   const handleConnectDrive = () => {
@@ -350,6 +371,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             module={activeModule} 
             history={moduleHistory[activeModule.id] || []}
             onResultGenerated={(result) => handleModuleResult(activeModule.id, result)}
+            onUpdateHistory={(result) => handleUpdateLastLog(activeModule.id, result)}
           />
         )}
       </main>

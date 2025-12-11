@@ -1,6 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import { ModuleDefinition, ModuleId, StoryboardFrame } from '../types';
 import { generateModuleContent, generateSingleFrame } from '../services/geminiService';
+import { generateCinematicImage } from '../services/bananaProService';
+import { ApiKeyContext } from '../contexts/ApiKeyContext';
 
 declare global {
   interface Window {
@@ -13,9 +15,11 @@ interface ActiveModuleProps {
   module: ModuleDefinition;
   history: string[];
   onResultGenerated: (result: string) => void;
+  onUpdateHistory?: (result: string) => void;
 }
 
-const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGenerated }) => {
+const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGenerated, onUpdateHistory }) => {
+  const apiKey = useContext(ApiKeyContext);
   const [textInput, setTextInput] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -29,6 +33,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const [editingFrameIndex, setEditingFrameIndex] = useState<number | null>(null);
   const [editedFrameData, setEditedFrameData] = useState<StoryboardFrame | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
+  
+  // Image Generation State
+  const [generatingImageIndex, setGeneratingImageIndex] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyboardRef = useRef<HTMLDivElement>(null);
@@ -97,6 +104,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       const newData = [...storyboardData];
       newData[editingFrameIndex] = editedFrameData;
       setStoryboardData(newData);
+      
+      // Persist changes
+      if (onUpdateHistory) {
+        onUpdateHistory(JSON.stringify(newData));
+      }
+
       setEditingFrameIndex(null);
       setEditedFrameData(null);
     }
@@ -112,15 +125,46 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       const newData = [...storyboardData];
       if (editingFrameIndex === index) {
         setEditedFrameData({ ...frame, svg: newSvg });
-      } 
-      // Always update the main data source too so it reflects immediately if saved
-      newData[index] = { ...frame, svg: newSvg };
-      setStoryboardData(newData);
+      } else {
+        // Update main state if not in edit mode (unlikely flow but safe)
+        newData[index] = { ...frame, svg: newSvg };
+        setStoryboardData(newData);
+        if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
+      }
     } catch (e) {
       console.error(e);
       alert("Failed to regenerate frame.");
     } finally {
       setRegeneratingIndex(null);
+    }
+  };
+
+  const handleGenerateRealImage = async (index: number) => {
+    const frame = storyboardData[index];
+    setGeneratingImageIndex(index);
+    try {
+      // Construct a rich prompt for the image generator
+      const prompt = `Cinematic movie shot, ${frame.shotType}. ${frame.description}. 
+      Lighting: ${frame.lightingNotes}. 
+      Composition: ${frame.composition}, ${frame.cameraMovement}, ${frame.focalLength}. 
+      Highly detailed, photorealistic, 8k resolution, dramatic lighting, movie still.`;
+
+      const base64Image = await generateCinematicImage(prompt, apiKey);
+      
+      const newData = [...storyboardData];
+      newData[index] = { ...frame, generatedImage: base64Image };
+      setStoryboardData(newData);
+      
+      // Persist
+      if (onUpdateHistory) {
+        onUpdateHistory(JSON.stringify(newData));
+      }
+
+    } catch (e: any) {
+      console.error(e);
+      alert(`Failed to generate image: ${e.message || "Unknown error"}`);
+    } finally {
+      setGeneratingImageIndex(null);
     }
   };
 
@@ -317,32 +361,62 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                    const isEditing = editingFrameIndex === idx;
                    const data = isEditing ? editedFrameData! : frame;
                    const isRegenerating = regeneratingIndex === idx;
+                   const isGeneratingImage = generatingImageIndex === idx;
 
                    return (
                     <div key={idx} className="storyboard-frame bg-white border border-gray-300 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                       
                       {/* Frame / SVG Area */}
-                      <div className="bg-gray-50 border-b border-gray-200 p-4 relative aspect-video flex items-center justify-center group">
+                      <div className="bg-gray-50 border-b border-gray-200 p-4 relative aspect-video flex items-center justify-center group overflow-hidden">
                           {/* Badge */}
                           <div className="absolute top-2 right-2 bg-white px-3 py-1 border border-gray-400 text-sm font-bold text-gray-800 shadow-sm z-10">
                             SHOT {idx + 1}: {data.shotType}
                           </div>
 
                           {/* Loader */}
-                          {isRegenerating && (
+                          {(isRegenerating || isGeneratingImage) && (
                             <div className="absolute inset-0 flex items-center justify-center bg-white/90 z-20">
                                <div className="flex flex-col items-center">
                                  <div className="w-8 h-8 border-2 border-gray-800 border-t-transparent rounded-full animate-spin mb-2"></div>
-                                 <span className="text-xs font-mono font-bold text-gray-800">REGENERATING...</span>
+                                 <span className="text-xs font-mono font-bold text-gray-800">
+                                   {isGeneratingImage ? "RENDERING AI..." : "REGENERATING SKETCH..."}
+                                 </span>
                                </div>
                             </div>
                           )}
 
-                          {/* SVG Image */}
-                          <div dangerouslySetInnerHTML={{ __html: data.svg }} className="w-full h-full object-contain" />
+                          {/* Display Image (Generated) or SVG (Sketch) */}
+                          {data.generatedImage ? (
+                            <div className="w-full h-full relative">
+                               <img src={data.generatedImage} alt={data.description} className="w-full h-full object-cover" />
+                               {/* Toggle back to sketch button */}
+                               <button 
+                                 onClick={() => {
+                                   const newData = [...storyboardData];
+                                   delete newData[idx].generatedImage;
+                                   setStoryboardData(newData);
+                                 }}
+                                 className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-1 hover:bg-black"
+                               >
+                                 Show Sketch
+                               </button>
+                            </div>
+                          ) : (
+                            <div dangerouslySetInnerHTML={{ __html: data.svg }} className="w-full h-full object-contain" />
+                          )}
                           
                           {/* Hover Actions */}
-                          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                             {!data.generatedImage && !isGeneratingImage && (
+                               <button 
+                                 onClick={() => handleGenerateRealImage(idx)}
+                                 className="bg-purple-900 text-white text-[10px] px-2 py-1 font-bold uppercase tracking-wider hover:bg-purple-800 rounded shadow flex items-center gap-1"
+                               >
+                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                 Render
+                               </button>
+                             )}
+                             
                              <button 
                                onClick={() => handleDownloadJPG(data.svg, idx + 1)}
                                className="bg-gray-800 text-white text-[10px] px-2 py-1 font-bold uppercase tracking-wider hover:bg-gray-700 rounded shadow"

@@ -48,6 +48,7 @@ export interface StoryboardFrame {
   blocking: string;
   emotionalIntent: string;
   timing: string;
+  generatedImage?: string; // Base64 Data URL of AI Generated Image
 }
 
 export interface ProjectData {
