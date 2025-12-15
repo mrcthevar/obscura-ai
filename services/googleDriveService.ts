@@ -21,7 +21,7 @@ let accessToken: string | null = localStorage.getItem('obscura_drive_token');
 // Helper to wait for the Google Script to load
 const waitForGoogleScript = async () => {
   let attempts = 0;
-  while (!window.google && attempts < 20) {
+  while (!window.google && attempts < 50) { // Increased to 50 attempts (10s)
     await new Promise((resolve) => setTimeout(resolve, 200));
     attempts++;
   }

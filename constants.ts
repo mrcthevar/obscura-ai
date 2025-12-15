@@ -6,56 +6,74 @@ export const MODULES: ModuleDefinition[] = [
     title: 'LUX',
     subtitle: 'Lighting Reverse-Engineer',
     icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
-    description: 'Analyze shadows and contrast to reverse-engineer lighting setups.',
+    description: 'Upload any frame from a movie or music video to analyze its lighting design, including key light direction, contrast, and mood.',
     requiresImage: true,
-    requiresText: false
+    requiresText: false,
+    steps: ["Reading frame", "Detecting light sources", "Estimating contrast", "Building lighting notes"]
   },
   {
     id: ModuleId.STORYBOARD,
     title: 'STORYBOARD',
     subtitle: 'The Storyboard Architect',
     icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-    description: 'Turn text descriptions into detailed pencil-sketch storyboards with technical shot specs.',
+    description: 'Generate a complete storyboard from text: upload a script or scene description and create editable shots with frames and camera notes.',
     requiresImage: false,
-    requiresText: true
+    requiresText: true,
+    steps: ["Reading script", "Detecting beats", "Proposing shots", "Polishing descriptions"]
   },
   {
     id: ModuleId.MASTERCLASS,
     title: 'MASTERCLASS',
     subtitle: 'The Archive Historian',
     icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-    description: 'Generate deep-dive dossiers on films or directors.',
+    description: 'Generate in-depth visual and thematic dossiers on films, directors, or DPs, with references, style notes, and viewing recommendations.',
     requiresImage: false,
-    requiresText: true
+    requiresText: true,
+    steps: ["Accessing Archives", "Analyzing Visual Style", "Decoding Subtext", "Compiling Dossier"]
   },
   {
     id: ModuleId.SUBTEXT,
     title: 'SUBTEXT',
     subtitle: 'The Director’s Treatment',
     icon: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z',
-    description: 'Find the invisible script and generate shot lists.',
+    description: 'Uncover the hidden emotional beats in your script, then auto-generate shot lists that emphasize subtext and character dynamics.',
     requiresImage: false,
-    requiresText: true
+    requiresText: true,
+    steps: ["Parsing Dialogue", "Identifying Subtext", "Mapping Emotional Beats", "Generating Shot List"]
   },
   {
     id: ModuleId.KINETIC,
     title: 'KINETIC',
     subtitle: 'The Blocking Bot',
     icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2v8a2 2 0 002 2z',
-    description: 'Analyze scene tension and recommend camera rigs.',
+    description: 'Analyze scene tension and blocking to recommend camera rigs, movement patterns, and lens choices for dynamic coverage.',
     requiresImage: false,
-    requiresText: true
+    requiresText: true,
+    steps: ["Analyzing Action", "Calculating Tension", "Simulating Camera Movement", "Optimizing Rigging"]
   },
   {
     id: ModuleId.GENESIS,
     title: 'VISIONARY',
     subtitle: 'The Prompt Architect',
     icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z',
-    description: 'Synthesize reference images into Midjourney v6 prompts.',
+    description: 'Turn your references into Midjourney v6–ready prompts, helping you synthesize consistent concept art and look references from stills.',
     requiresImage: true,
-    requiresText: true
+    requiresText: true,
+    steps: ["Deconstructing Image", "Analyzing Script", "Synthesizing Aesthetic", "Engineering Prompt"]
   }
 ];
+
+const ANALYSIS_LOG_INSTRUCTION = `
+  <br>
+  <div class='mt-8 border-t border-gray-800 pt-4 opacity-70'>
+    <h4 class='text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 font-inter'>Analysis Log</h4>
+    <ul class='list-none space-y-1 text-[10px] text-gray-600 font-mono'>
+      <li class='flex items-center gap-2'><span class='w-1 h-1 bg-green-500 rounded-full'></span> Input processed successfully</li>
+      <li class='flex items-center gap-2'><span class='w-1 h-1 bg-green-500 rounded-full'></span> Contextual vectors aligned</li>
+      <li class='flex items-center gap-2'><span class='w-1 h-1 bg-green-500 rounded-full'></span> Output synthesized</li>
+    </ul>
+  </div>
+`;
 
 export const SYSTEM_INSTRUCTIONS = {
   [ModuleId.LUX]: `You are a World-Class Director of Photography. Analyze the uploaded image. Output purely in HTML format (using <h3>, <ul>, <li>, <strong>) without markdown code blocks.
@@ -63,7 +81,8 @@ export const SYSTEM_INSTRUCTIONS = {
   1. Lighting Setup (Key, Fill, Back, hardness/softness, fixture guesses).
   2. Color & Atmosphere (Kelvin temps).
   3. Technical Specs (Focal Length, Aperture, Sensor).
-  4. Recreation Guide (Bullet points).`,
+  4. Recreation Guide (Bullet points).
+  ${ANALYSIS_LOG_INSTRUCTION}`,
 
   [ModuleId.STORYBOARD]: `You are a professional storyboard artist and director. Convert the scene description into a detailed storyboard.
   Return ONLY a valid JSON array of objects.
@@ -149,6 +168,8 @@ export const SYSTEM_INSTRUCTIONS = {
     <p><strong class="text-white">Practical Translation:</strong> How to adapt these ideas on low-budget or indie productions.</p>
   </div>
 
+  ${ANALYSIS_LOG_INSTRUCTION}
+
   </div> <!-- End Wrapper -->
 
   PATH B: If it is a FILMMAKER (e.g., 'Roger Deakins'):
@@ -184,19 +205,23 @@ export const SYSTEM_INSTRUCTIONS = {
     <p class="italic text-gray-300">A final, concise takeaway explaining why every aspiring filmmaker should study this artist's work.</p>
   </div>
 
+  ${ANALYSIS_LOG_INSTRUCTION}
+
   </div> <!-- End Wrapper -->`,
 
   [ModuleId.SUBTEXT]: `You are a Visionary Director. Analyze the script text. Output in HTML (no markdown blocks).
   Provide:
   1. Core Emotion (in a styled div).
   2. Visual Philosophy.
-  3. A <table> with columns: Shot Size, Focal Length, Motivation.`,
+  3. A <table> with columns: Shot Size, Focal Length, Motivation.
+  ${ANALYSIS_LOG_INSTRUCTION}`,
 
   [ModuleId.KINETIC]: `You are a Steadicam Operator / Stunt Coordinator. Analyze scene tension. Output in HTML (no markdown blocks).
   Provide:
   1. Tension Analysis (Static vs Kinetic).
   2. Rig Recommendation (Tripod, Handheld, Steadicam, etc.) with psychological reasoning.
-  3. "The Master Move" (One complex camera move suggestion).`,
+  3. "The Master Move" (One complex camera move suggestion).
+  ${ANALYSIS_LOG_INSTRUCTION}`,
 
   [ModuleId.GENESIS]: `Act as a Senior Prompt Engineer for Midjourney v6 and Cinematic AI Art. Your goal is to translate a reference image's aesthetic and a script's content into a single, high-fidelity text prompt.
 
@@ -223,5 +248,6 @@ export const SYSTEM_INSTRUCTIONS = {
     - A 16:9 cinematic composition with clear foreground, midground, and background description when relevant.
 
   - Do not explain the task. Do not output any text outside the HTML structure above.
-  - The green prompt box must be a single, copy-paste-ready line that starts with '/imagine prompt:' and ends with Midjourney parameters.`
+  - The green prompt box must be a single, copy-paste-ready line that starts with '/imagine prompt:' and ends with Midjourney parameters.
+  ${ANALYSIS_LOG_INSTRUCTION}`
 };

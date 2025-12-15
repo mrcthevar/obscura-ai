@@ -28,6 +28,7 @@ export interface ModuleDefinition {
   description: string;
   requiresImage: boolean;
   requiresText: boolean;
+  steps: string[]; // Visual steps for thinking mode
 }
 
 export interface GeminiResponse {

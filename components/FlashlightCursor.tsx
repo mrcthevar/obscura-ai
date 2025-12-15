@@ -30,7 +30,7 @@ const FlashlightCursor: React.FC = () => {
   return (
     <div
       ref={cursorRef}
-      className="pointer-events-none fixed inset-0 z-50 transition-opacity duration-300"
+      className="pointer-events-none fixed inset-0 z-40 transition-opacity duration-300"
       style={{
         background: `radial-gradient(600px circle at 0px 0px, rgba(255, 215, 0, 0.03), transparent 40%)`,
       }}

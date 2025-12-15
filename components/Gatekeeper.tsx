@@ -11,23 +11,27 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSubmit }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputKey.startsWith('AIza')) {
-      setError('Invalid Key Format. Must start with "AIza..."');
+      setError('Invalid format. Key must start with "AIza"');
       return;
     }
     onSubmit(inputKey);
   };
 
   return (
-    <div className="min-h-screen bg-black/95 flex items-center justify-center px-4 relative">
-      
-      <div className="max-w-md w-full bg-[#0A0A0A] border border-neutral-800 p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] backdrop-blur-md relative z-10">
-        <h2 className="text-3xl font-cinzel text-white mb-2 text-center">The Gatekeeper</h2>
-        <p className="text-neutral-500 text-center font-inter text-sm mb-8">
-          A Gemini API Key is required to power the intelligence modules.
-        </p>
+    <div className="min-h-screen bg-[#161618] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 bg-[#2C2C2E] rounded-xl mx-auto flex items-center justify-center mb-4 text-[#FFD700]">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11.536 11.235a2 2 0 10-.708.708l3.475 3.475A6 6 0 1019 9z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-medium text-white">Authentication Required</h2>
+          <p className="text-[#8E8E93] text-sm mt-2">Enter your Gemini API Key to access the suite.</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="relative group">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
             <input
               type="password"
               value={inputKey}
@@ -35,28 +39,30 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSubmit }) => {
                 setInputKey(e.target.value);
                 setError('');
               }}
-              placeholder="Paste your API Key here..."
-              className="w-full bg-[#050505] border border-neutral-700 text-white px-4 py-3 focus:outline-none focus:border-[#FFD700] transition-colors font-mono text-sm"
+              placeholder="AIza..."
+              className="w-full bg-[#1C1C1E] border border-white/10 text-white px-4 py-3 rounded-lg text-sm focus:outline-none focus:border-[#FFD700] focus:ring-1 focus:ring-[#FFD700] transition-all placeholder-[#48484A]"
+              autoFocus
             />
-            {error && <p className="text-red-500 text-xs mt-2 font-inter">{error}</p>}
+            {error && <p className="text-red-400 text-xs mt-2 ml-1">{error}</p>}
           </div>
 
           <button
             type="submit"
-            className="w-full bg-[#FFD700] text-black font-bold py-3 hover:bg-white transition-colors duration-300 font-inter tracking-wide"
+            disabled={!inputKey}
+            className="w-full bg-white text-black font-medium py-3 rounded-lg hover:bg-[#F2F2F7] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            ACCESS TERMINAL
+            Connect
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-8 text-center">
           <a 
             href="https://aistudio.google.com/app/apikey" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-xs text-neutral-600 hover:text-[#FFD700] underline decoration-neutral-800 underline-offset-4 transition-colors"
+            className="text-xs text-[#636366] hover:text-[#AEAEB2] transition-colors"
           >
-            Generate a free key at Google AI Studio
+            Get a key from Google AI Studio &rarr;
           </a>
         </div>
       </div>

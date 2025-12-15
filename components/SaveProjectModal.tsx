@@ -19,8 +19,14 @@ const SaveProjectModal: React.FC<SaveProjectModalProps> = ({ onSave, onCancel, i
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#0A0A0A] border border-neutral-700 w-full max-w-md p-8 shadow-[0_0_40px_rgba(255,215,0,0.1)] rounded relative">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
+      onClick={onCancel}
+    >
+      <div 
+        className="bg-[#0A0A0A] border border-neutral-700 w-full max-w-md p-8 shadow-[0_0_40px_rgba(255,215,0,0.1)] rounded relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="text-2xl font-cinzel text-white mb-6 border-b border-neutral-800 pb-4">
           Save Project to Drive
         </h3>

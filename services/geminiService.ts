@@ -37,10 +37,11 @@ export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { 
   });
 };
 
-export const generateModuleContent = async (
+export const streamModuleContent = async (
   moduleId: ModuleId,
   textInput: string,
-  imageFile: File | null
+  imageFile: File | null,
+  onChunk: (text: string) => void
 ): Promise<string> => {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -75,16 +76,24 @@ export const generateModuleContent = async (
       config.responseMimeType = "application/json";
     }
 
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const result = await ai.models.generateContentStream({
       model: modelName,
       contents: { parts },
       config: config
     });
 
-    const text = response.text;
-    if (!text) throw new Error("No response generated");
+    let fullText = '';
+    for await (const chunk of result) {
+      const text = chunk.text;
+      if (text) {
+        fullText += text;
+        onChunk(text);
+      }
+    }
+
+    if (!fullText) throw new Error("No response generated");
     
-    return text;
+    return fullText;
 
   } catch (error: any) {
     console.error("Gemini Service Error:", error);

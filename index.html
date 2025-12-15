@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary Meta Tags -->
-    <title>OBSCURA.AI | Cinematic Intelligence Suite</title>
+    <title>OBSCURA.AI | Studio</title>
     <meta name="title" content="OBSCURA.AI | Cinematic Intelligence Suite">
-    <meta name="description" content="AI-powered filmmaking assistant. Generate professional storyboards, reverse-engineer lighting setups, analyze scripts, and create director's treatments using Gemini 3 Pro.">
-    <meta name="theme-color" content="#050505">
+    <meta name="description" content="AI-powered filmmaking assistant. Generate professional storyboards, reverse-engineer lighting setups, analyze scripts, and create director's treatments.">
+    <meta name="theme-color" content="#161618">
 
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,33 +17,85 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
-      body {
-        background-color: #050505;
-        color: #E0E0E0;
-        font-family: 'Inter', sans-serif;
-        overflow-x: hidden;
+      :root {
+        /* Default Dark Mode */
+        --bg-studio: #161618;
+        --bg-panel: #1C1C1E;
+        --bg-element: #2C2C2E;
+        --bg-hover: rgba(255, 255, 255, 0.05);
+        --border-subtle: rgba(255, 255, 255, 0.08);
+        --text-primary: #F2F2F7;
+        --text-secondary: #AEAEB2;
+        --text-muted: #636366;
+        --accent: #FFD700;
+        --shadow-color: rgba(0, 0, 0, 0.3);
       }
-      h1, h2, h3, .cinematic-text {
+      
+      [data-theme="light"] {
+        /* Light Mode - Apple Style */
+        --bg-studio: #F5F5F7;
+        --bg-panel: #FFFFFF;
+        --bg-element: #E5E5EA;
+        --bg-hover: rgba(0, 0, 0, 0.05);
+        --border-subtle: rgba(0, 0, 0, 0.1);
+        --text-primary: #1D1D1F;
+        --text-secondary: #6e6e73;
+        --text-muted: #86868b;
+        --accent: #007AFF; /* Cinematic Blue for Light Mode */
+        --shadow-color: rgba(0, 0, 0, 0.1);
+      }
+
+      body {
+        background-color: var(--bg-studio);
+        color: var(--text-primary);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      
+      h1, h2, h3, h4, h5, h6 {
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+      }
+      
+      .font-brand {
         font-family: 'Cinzel', serif;
       }
-      .handwritten {
-        font-family: 'Patrick Hand', cursive;
-      }
-      ::-webkit-scrollbar { width: 8px; }
-      ::-webkit-scrollbar-track { background: #0a0a0a; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #FFD700; }
       
-      .prose h1, .prose h2, .prose h3 { font-family: 'Cinzel', serif; color: #FFD700; margin-top: 1.5em; margin-bottom: 0.5em; }
-      .prose strong { color: white; }
-      .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-      .prose li { margin-bottom: 0.5em; }
-      .prose table { width: 100%; border-collapse: collapse; margin: 1em 0; }
-      .prose th, .prose td { border: 1px solid #333; padding: 8px; text-align: left; }
-      .prose th { color: #FFD700; }
+      /* Dynamic Classes */
+      .bg-studio { background-color: var(--bg-studio); }
+      .bg-panel { background-color: var(--bg-panel); }
+      .bg-element { background-color: var(--bg-element); }
+      .border-subtle { border-color: var(--border-subtle); }
+      .text-primary { color: var(--text-primary); }
+      .text-secondary { color: var(--text-secondary); }
+      .text-muted { color: var(--text-muted); }
+      
+      /* Apple-style Scrollbar */
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: var(--bg-element); border-radius: 5px; border: 2px solid var(--bg-studio); }
+      ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+      
+      /* Typography Classes for Dynamic Content */
+      .prose h1, .prose h2, .prose h3 { color: var(--text-primary); margin-top: 1.5em; margin-bottom: 0.5em; font-family: 'Inter', sans-serif; }
+      .prose strong { color: var(--text-primary); font-weight: 600; }
+      .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: var(--text-secondary); }
+      .prose li { margin-bottom: 0.25em; }
+      .prose p { margin-bottom: 1em; line-height: 1.6; color: var(--text-secondary); }
+      
+      /* Utilities */
+      .glass-panel {
+        background: var(--bg-panel);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border-subtle);
+      }
     </style>
 <script type="importmap">
 {
