@@ -1,5 +1,4 @@
 
-
 export enum AppState {
   LANDING = 'LANDING',
   GATEKEEPER = 'GATEKEEPER',
@@ -26,16 +25,11 @@ export interface ModuleDefinition {
   id: ModuleId;
   title: string;
   subtitle: string;
-  icon: string; // SVG path data or simple identifier
+  icon: string;
   description: string;
   requiresImage: boolean;
   requiresText: boolean;
-  steps: string[]; // Visual steps for thinking mode
-}
-
-export interface GeminiResponse {
-  content: string; // HTML or JSON string
-  isError: boolean;
+  steps: string[];
 }
 
 export interface StoryboardFrame {
@@ -45,17 +39,17 @@ export interface StoryboardFrame {
   shotType: string;
   cameraMovement: string;
   focalLength: string;
-  dof: string; // Depth of field
+  dof: string;
   composition: string;
   lightingNotes: string;
   blocking: string;
   emotionalIntent: string;
   timing: string;
-  generatedImage?: string; // Base64 Data URL of AI Generated Image
+  generatedImage?: string;
 }
 
 export interface ProjectData {
-  id?: string; // Google Drive File ID
+  id?: string;
   name: string;
   lastModified: number;
   moduleHistory: Record<string, string[]>;
@@ -68,15 +62,30 @@ export interface DriveFile {
   modifiedTime?: string;
 }
 
-declare global {
-  // Removed conflicting process declaration as it is provided by the execution context environment
-  interface ImportMetaEnv {
-    readonly VITE_GEMINI_API_KEY?: string;
-    readonly VITE_GOOGLE_CLIENT_ID?: string;
-    [key: string]: string | undefined;
-  }
+// Fixed: Defined AIStudio interface centrally to ensure consistent usage in global declarations.
+export interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
 
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
+declare global {
+  interface Window {
+    // Fixed: Updated process definition to match the shim implemented in index.tsx.
+    process: {
+      env: {
+        API_KEY?: string;
+        [key: string]: string | undefined;
+      };
+    };
+    // Fixed: Assigned AIStudio interface to ensure identical property types across all declarations.
+    aistudio: AIStudio;
   }
+  
+  // Fixed: Extended ImportMeta globally to include the 'env' property for Vite compatibility.
+  interface ImportMeta {
+    readonly env: Record<string, string | undefined>;
+  }
+  
+  // Fixed: Used any for process to avoid block-scoped redeclaration conflicts in environments with pre-existing process types.
+  var process: any;
 }

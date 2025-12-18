@@ -1,18 +1,8 @@
 
 import { GoogleGenAI } from "@google/genai";
+import { AIStudio } from "../types";
 
-declare global {
-  // Define the AIStudio interface within the global scope to provide types for the aistudio object on window.
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-
-  interface Window {
-    // Removed readonly to match existing global declarations and prevent modifier mismatch errors.
-    aistudio: AIStudio;
-  }
-}
+// Fixed: Removed redundant declare global block that conflicted with centralized definitions in types.ts.
 
 export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: string): Promise<string> => {
   // Mandatory check for gemini-3-pro-image-preview key selection
