@@ -146,7 +146,17 @@ export const generateSingleFrame = async (
       }
     );
 
-    if (!response.ok) throw new Error("Network response was not ok");
+    if (!response.ok) {
+      let errorMessage = "Network response was not ok";
+      try {
+        const err = await response.json();
+        errorMessage = err.error?.message || errorMessage;
+      } catch (e) {
+        errorMessage = `HTTP Error ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
     const data = await response.json();
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
@@ -157,6 +167,6 @@ export const generateSingleFrame = async (
     return text;
   } catch (error: any) {
     console.error("Single Frame Generation Error:", error);
-    throw new Error("Neural redraw failed.");
+    throw new Error(error.message || "Neural redraw failed.");
   }
 };

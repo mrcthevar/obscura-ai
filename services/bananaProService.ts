@@ -32,11 +32,21 @@ export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: str
     );
 
     if (!response.ok) {
-        const err = await response.json();
-        if (err.error?.message?.includes("Requested entity was not found")) {
-            await window.aistudio?.openSelectKey();
+        let errorMessage = "Image synthesis failed.";
+        try {
+            const err = await response.json();
+            if (err.error?.message?.includes("Requested entity was not found")) {
+                await window.aistudio?.openSelectKey();
+                // We could retry here, but throwing nicely is safer to prevent infinite loops
+                throw new Error("License key required. Please select a key and try again.");
+            }
+            errorMessage = err.error?.message || errorMessage;
+        } catch (e: any) {
+             // If JSON parse fails (e.g. 500 HTML) or the specific check fails
+             if (e.message && e.message.includes("License key")) throw e;
+             errorMessage = `HTTP Error ${response.status}: ${response.statusText}`;
         }
-        throw new Error(err.error?.message || "Image synthesis failed.");
+        throw new Error(errorMessage);
     }
 
     const data = await response.json();

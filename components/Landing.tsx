@@ -75,7 +75,8 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
           
           const parent = document.getElementById('google-btn-wrapper');
           if (parent && !buttonRenderedRef.current) {
-             parent.innerHTML = '';
+             // Safe to clear: We ensure React renders no children here in JSX
+             parent.innerHTML = ''; 
              google.accounts.id.renderButton(parent, {
                theme: 'filled_black',
                size: 'large',
@@ -137,8 +138,20 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
                 <div className="h-[1px] flex-1 bg-white/10"></div>
               </div>
 
-              <div id="google-btn-wrapper" className={`w-full min-h-[50px] flex justify-center transition-all duration-1000 ${!isGsiReady ? 'opacity-30 grayscale' : 'opacity-100'}`}>
-                {!isGsiReady && <div className="text-zinc-800 font-mono text-[9px] animate-pulse tracking-widest uppercase">Syncing Keys...</div>}
+              {/* FIX: Use a relative container for positioning the loader, 
+                  BUT keep the target div empty of React children to prevent 'removeChild' errors */}
+              <div className={`w-full min-h-[50px] flex justify-center items-center relative transition-all duration-1000 ${!isGsiReady ? 'opacity-30 grayscale' : 'opacity-100'}`}>
+                
+                {/* React Managed Loading State (Sibling, not child of target) */}
+                {!isGsiReady && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-zinc-800 font-mono text-[9px] animate-pulse tracking-widest uppercase">Syncing Keys...</div>
+                  </div>
+                )}
+                
+                {/* External Script Managed Target (React leaves this empty) */}
+                <div id="google-btn-wrapper" className="z-10"></div>
+              
               </div>
             </div>
           )}
