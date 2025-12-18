@@ -15,7 +15,8 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
   useEffect(() => {
     const checkSystems = () => {
       // Check for key in environment or existing localStorage
-      const hasKey = !!process.env.API_KEY && process.env.API_KEY.length > 5;
+      const api_key = (window as any).process?.env?.API_KEY;
+      const hasKey = !!api_key && api_key.length > 5;
       const hasSdk = !!(window as any).aistudio;
       
       setStatus({
@@ -23,9 +24,9 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
         sdkReady: hasSdk
       });
       
-      // If a key is already present (e.g. from environment or previously saved), auto-advance
+      // If a key is already present, auto-advance
       if (hasKey) {
-        onSuccess(process.env.API_KEY);
+        onSuccess(api_key);
       }
     };
     checkSystems();
@@ -42,7 +43,7 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
     // Save to localStorage for persistence
     localStorage.setItem('obscura_api_key', cleanKey);
     
-    // Inject into the runtime shim immediately for non-reactive code
+    // Inject into the global process object immediately
     if (!(window as any).process) (window as any).process = { env: {} };
     if (!(window as any).process.env) (window as any).process.env = {};
     (window as any).process.env.API_KEY = cleanKey;
@@ -55,6 +56,8 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
     if (aistudio) {
       try {
         await aistudio.openSelectKey();
+        // The key is injected by the platform into process.env.API_KEY
+        // We call onSuccess to move to the dashboard
         onSuccess();
       } catch (e) {
         console.error("Link failed", e);

@@ -35,5 +35,3 @@ OBSCURA.AI uses a hybrid key strategy:
 - **User Key**: For the **VISIONARY (Pro Image)** module, users are prompted to select their own key via `window.aistudio.openSelectKey()`. This protects your billing for high-cost tasks.
 
 **Success!** Your Cinematic AI Suite is ready for production.
-
-<!-- Build fix applied: TypeScript configuration and dependencies updated -->

@@ -1,4 +1,4 @@
-
+// TypeScript configuration for OBSCURA.AI
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -19,9 +19,8 @@
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Environment Types */
-    "types": ["vite/client"] },  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["*.tsx", "*.ts", "components/**/*.tsx", "components/**/*.ts", "contexts/**/*.tsx", "contexts/**/*.ts", "hooks/**/*.tsx", "hooks/**/*.ts", "services/**/*.tsx", "services/**/*.ts"],
+  "exclude": ["functions", "node_modules"]
 }

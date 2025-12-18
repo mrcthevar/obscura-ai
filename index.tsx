@@ -3,16 +3,20 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// Runtime shim to prevent "process is not defined" in browser
-// Prioritize localStorage for manual injection if env vars aren't available
-if (typeof (window as any).process === 'undefined' || !(window as any).process.env) {
-  const storedKey = localStorage.getItem('obscura_api_key');
-  (window as any).process = { 
-    env: {
-       API_KEY: storedKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || ''
-    } 
-  };
-}
+// Runtime shim to ensure process.env.API_KEY is available
+// We initialize it surgically to avoid blowing away platform-injected objects
+(function() {
+  const win = window as any;
+  if (!win.process) win.process = { env: {} };
+  if (!win.process.env) win.process.env = {};
+  
+  // Only set if not already present to respect platform injection
+  if (!win.process.env.API_KEY) {
+    const storedKey = localStorage.getItem('obscura_api_key');
+    const viteKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    win.process.env.API_KEY = storedKey || viteKey || '';
+  }
+})();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
