@@ -8,28 +8,36 @@ import App from './App';
  * We surgically inject it before the app mounts to ensure process.env.API_KEY
  * and other critical variables are accessible.
  */
-(function() {
-  const win = window as any;
-  if (!win.process) win.process = { env: {} };
-  if (!win.process.env) win.process.env = {};
-  
-  // Bridge Vite environment variables to the global process object.
-  const viteApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
-  const viteClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
-  const storedKey = localStorage.getItem('obscura_api_key');
-  
-  // Priority: 1. Environment Variable, 2. Stored Key from Gatekeeper
-  if (!win.process.env.API_KEY) {
-    win.process.env.API_KEY = viteApiKey || storedKey || '';
-  }
-  
-  if (!win.process.env.VITE_GOOGLE_CLIENT_ID) {
-    win.process.env.VITE_GOOGLE_CLIENT_ID = viteClientId || '';
-  }
-  
-  // Also expose to the global scope for the compiler-friendly 'process' variable
-  (win as any).process = win.process;
-})();
+try {
+  (function() {
+    const win = window as any;
+    if (!win.process) win.process = { env: {} };
+    if (!win.process.env) win.process.env = {};
+    
+    // Bridge Vite environment variables to the global process object.
+    // Use optional chaining for safety.
+    const metaEnv = (import.meta as any)?.env || {};
+    
+    const viteApiKey = metaEnv.VITE_GEMINI_API_KEY;
+    const viteClientId = metaEnv.VITE_GOOGLE_CLIENT_ID;
+    const storedKey = localStorage.getItem('obscura_api_key');
+    
+    // Priority: 1. Environment Variable, 2. Stored Key from Gatekeeper
+    if (!win.process.env.API_KEY) {
+      win.process.env.API_KEY = viteApiKey || storedKey || '';
+    }
+    
+    if (!win.process.env.VITE_GOOGLE_CLIENT_ID) {
+      win.process.env.VITE_GOOGLE_CLIENT_ID = viteClientId || '';
+    }
+    
+    // Also expose to the global scope for the compiler-friendly 'process' variable
+    (win as any).process = win.process;
+  })();
+} catch (e) {
+  console.warn("Environment shim encountered a warning:", e);
+  // Continue execution even if shim fails, to allow ErrorBoundary to render
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

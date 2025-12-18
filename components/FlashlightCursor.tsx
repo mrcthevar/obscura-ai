@@ -1,21 +1,21 @@
+
 import React, { useEffect, useRef } from 'react';
 
 const FlashlightCursor: React.FC = () => {
   const cursorRef = useRef<HTMLDivElement>(null);
-  const positionRef = useRef({ x: 0, y: 0 });
+  const positionRef = useRef({ x: -1000, y: -1000 }); // Start off-screen
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      // Update ref immediately without triggering re-render
       positionRef.current = { x: e.clientX, y: e.clientY };
     };
 
     const updatePosition = () => {
       if (cursorRef.current) {
         const { x, y } = positionRef.current;
-        // Use var(--accent) for the glow effect
-        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-        cursorRef.current.style.background = `radial-gradient(600px circle at ${x}px ${y}px, ${accentColor}08, transparent 40%)`;
+        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#F59E0B';
+        // Very low opacity to ensure it's just a subtle background atmospheric effect
+        cursorRef.current.style.background = `radial-gradient(800px circle at ${x}px ${y}px, ${accentColor}05, transparent 50%)`;
       }
       requestAnimationFrame(updatePosition);
     };
@@ -32,7 +32,7 @@ const FlashlightCursor: React.FC = () => {
   return (
     <div
       ref={cursorRef}
-      className="pointer-events-none fixed inset-0 z-40 transition-opacity duration-300"
+      className="pointer-events-none fixed inset-0 z-10 transition-opacity duration-300 bg-transparent"
     />
   );
 };

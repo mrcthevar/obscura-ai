@@ -73,8 +73,15 @@ export const streamModuleContent = async (
     );
 
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || "Uplink disrupted.");
+      let errorMessage = "Uplink disrupted.";
+      try {
+        const err = await response.json();
+        errorMessage = err.error?.message || errorMessage;
+      } catch (e) {
+        // Fallback if response is not JSON (e.g. 503 HTML page)
+        errorMessage = `HTTP Error ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const reader = response.body?.getReader();
