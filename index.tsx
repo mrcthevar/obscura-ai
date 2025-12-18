@@ -14,12 +14,13 @@ import App from './App';
   if (!win.process.env) win.process.env = {};
   
   // Bridge Vite environment variables to the global process object.
-  // Vite uses import.meta.env, but the Gemini SDK requires process.env.
   const viteApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
   const viteClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+  const storedKey = localStorage.getItem('obscura_api_key');
   
+  // Priority: 1. Environment Variable, 2. Stored Key from Gatekeeper
   if (!win.process.env.API_KEY) {
-    win.process.env.API_KEY = viteApiKey || '';
+    win.process.env.API_KEY = viteApiKey || storedKey || '';
   }
   
   if (!win.process.env.VITE_GOOGLE_CLIENT_ID) {

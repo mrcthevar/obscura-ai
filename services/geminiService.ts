@@ -3,6 +3,15 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { ModuleId } from '../types';
 import { SYSTEM_INSTRUCTIONS } from '../constants';
 
+// Internal helper to ensure we never pass an empty key to the SDK constructor
+export const getValidApiKey = (): string => {
+  const key = process.env.API_KEY || localStorage.getItem('obscura_api_key');
+  if (!key || key.length < 5) {
+    throw new Error("Neural Gate Unauthorized. Please enter a valid Gemini API Key.");
+  }
+  return key;
+};
+
 // Helper to convert file to Base64
 export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
   return new Promise((resolve, reject) => {
@@ -28,12 +37,11 @@ export const streamModuleContent = async (
   imageFile: File | null,
   onChunk: (text: string) => void
 ): Promise<string> => {
-  // Initialize client with process.env.API_KEY. 
-  // We rely on the index.tsx shim for browser environments.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Validate key BEFORE initializing SDK
+  const apiKey = getValidApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
   
-  // Using gemini-3-pro-preview for high-level creative reasoning and technical analysis
   const modelName = 'gemini-3-pro-preview'; 
 
   try {
@@ -80,7 +88,8 @@ export const generateSingleFrame = async (
   description: string,
   shotSpecs: string
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getValidApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-3-pro-preview';
 
   try {
