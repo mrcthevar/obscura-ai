@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AppState, UserProfile } from './types';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
@@ -11,34 +11,33 @@ const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.LANDING);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [runtimeKey, setRuntimeKey] = useState<string>(() => {
-    // Attempt to hydrate key from shim or storage immediately
     return process.env.API_KEY || localStorage.getItem('obscura_api_key') || '';
   });
 
+  // Sync state on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('obscura_user');
-    const isValidKey = runtimeKey && runtimeKey.length > 5;
-
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      
-      // Strict routing: Must have user AND key for Dashboard
-      if (isValidKey) {
-        setAppState(AppState.DASHBOARD);
-      } else {
-        setAppState(AppState.GATEKEEPER);
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        const key = process.env.API_KEY || localStorage.getItem('obscura_api_key') || '';
+        if (key && key.length > 5) {
+          setAppState(AppState.DASHBOARD);
+        } else {
+          setAppState(AppState.GATEKEEPER);
+        }
+      } catch (e) {
+        localStorage.removeItem('obscura_user');
       }
-    } else {
-      setAppState(AppState.LANDING);
     }
-  }, [runtimeKey]);
+  }, []);
 
-  const handleSignIn = (userProfile: UserProfile) => {
+  const handleSignIn = useCallback((userProfile: UserProfile) => {
     localStorage.setItem('obscura_user', JSON.stringify(userProfile));
     setUser(userProfile);
     
-    // Check key status immediately on sign in
     const currentKey = process.env.API_KEY || localStorage.getItem('obscura_api_key') || '';
     if (!currentKey || currentKey.length < 5) {
       setAppState(AppState.GATEKEEPER);
@@ -46,24 +45,25 @@ const App: React.FC = () => {
       setRuntimeKey(currentKey);
       setAppState(AppState.DASHBOARD);
     }
-  };
+  }, []);
 
-  const handleGatePassed = (key?: string) => {
+  const handleGatePassed = useCallback((key?: string) => {
     if (key) {
       setRuntimeKey(key);
       if (window.process?.env) {
         window.process.env.API_KEY = key;
       }
+      localStorage.setItem('obscura_api_key', key);
     }
     setAppState(AppState.DASHBOARD);
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('obscura_user');
-    // We clear the user and force back to landing
+    // We clear current runtime user but can keep the API key cached
     setUser(null);
     setAppState(AppState.LANDING);
-  };
+  }, []);
 
   return (
     <ApiKeyContext.Provider value={runtimeKey}>
