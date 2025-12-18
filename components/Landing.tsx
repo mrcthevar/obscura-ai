@@ -9,8 +9,11 @@ interface LandingProps {
 const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   const [activeClientId] = useState<string>(() => {
      const win = window as any;
-     return (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || win.process?.env?.VITE_GOOGLE_CLIENT_ID || '';
+     return (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || 
+            win.process?.env?.VITE_GOOGLE_CLIENT_ID || '';
   });
+
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const decodeJwt = (token: string): any => {
     try {
@@ -49,13 +52,17 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   };
 
   useEffect(() => {
-    if (!activeClientId) return;
+    if (!activeClientId) {
+      setIsInitializing(false);
+      return;
+    }
     
     let isMounted = true;
     const initGSI = () => {
-      if (window.google && window.google.accounts && isMounted) {
+      const google = (window as any).google;
+      if (google?.accounts?.id && isMounted) {
         try {
-          window.google.accounts.id.initialize({
+          google.accounts.id.initialize({
             client_id: activeClientId,
             callback: handleCredentialResponse,
             auto_select: false,
@@ -65,7 +72,7 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
           const parent = document.getElementById('google-btn-wrapper');
           if (parent) {
              parent.innerHTML = '';
-             window.google.accounts.id.renderButton(parent, {
+             google.accounts.id.renderButton(parent, {
                theme: 'filled_black',
                size: 'large',
                shape: 'pill',
@@ -73,11 +80,13 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
                logo_alignment: 'center'
              });
           }
+          setIsInitializing(false);
         } catch (e) {
-          console.error("GSI Init Error:", e);
+          console.error("GSI Core Error:", e);
+          setIsInitializing(false);
         }
       } else if (isMounted) {
-        setTimeout(initGSI, 500);
+        setTimeout(initGSI, 300);
       }
     };
     
@@ -108,11 +117,13 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
         <div className="w-full max-w-sm space-y-12">
           <div className="flex flex-col gap-4">
             {activeClientId ? (
-               <div id="google-btn-wrapper" className="w-full min-h-[50px] flex justify-center opacity-80 hover:opacity-100 transition-opacity"></div>
+               <div id="google-btn-wrapper" className={`w-full min-h-[50px] flex justify-center transition-all duration-1000 ${isInitializing ? 'opacity-0 scale-95' : 'opacity-80 hover:opacity-100'}`}>
+                 {isInitializing && <div className="text-zinc-800 font-mono text-[9px] animate-pulse tracking-widest">Waking Neural Link...</div>}
+               </div>
             ) : (
                <div className="text-center p-4 border border-white/5 rounded-2xl bg-white/[0.02]">
-                 <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Client ID Missing</p>
-                 <p className="text-[9px] text-zinc-700 mt-1">Configure VITE_GOOGLE_CLIENT_ID for Secure Login</p>
+                 <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Secure Login Unavailable</p>
+                 <p className="text-[9px] text-zinc-700 mt-1">VITE_GOOGLE_CLIENT_ID Required for Production</p>
                </div>
             )}
           </div>
@@ -140,7 +151,7 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
       <footer className="fixed bottom-12 left-0 right-0 z-50 flex flex-col items-center gap-4 pointer-events-none">
         <div className="flex items-center gap-3 text-zinc-800 font-mono text-[9px] tracking-tighter">
           <span>SERVER_STATUS:</span>
-          <span className="text-zinc-500 font-bold">ONLINE</span>
+          <span className="text-zinc-500 font-bold uppercase tracking-widest">Ready</span>
           <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)] animate-pulse-status"></div>
         </div>
       </footer>

@@ -1,39 +1,49 @@
 
 import { ProjectData, DriveFile } from '../types';
 
-const getClientId = () => {
+/**
+ * Robust Client ID retrieval from either Vite's build-time env 
+ * or our runtime Neural Shim.
+ */
+const getClientId = (): string => {
   const win = window as any;
-  return (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || win.process?.env?.VITE_GOOGLE_CLIENT_ID || '';
+  const id = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || 
+             win.process?.env?.VITE_GOOGLE_CLIENT_ID || '';
+  return id;
 };
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 let tokenClient: any = null;
 let accessToken: string | null = localStorage.getItem('obscura_drive_token');
 
-const waitForGoogleScript = async () => {
+/**
+ * Polls for the Google identity library to ensure we don't 
+ * initialize too early.
+ */
+const waitForGoogleScript = async (): Promise<boolean> => {
   let attempts = 0;
-  while (!window.google?.accounts?.oauth2 && attempts < 50) {
+  while (!(window as any).google?.accounts?.oauth2 && attempts < 50) {
     await new Promise((resolve) => setTimeout(resolve, 200));
     attempts++;
   }
-  return !!window.google?.accounts?.oauth2;
+  return !!(window as any).google?.accounts?.oauth2;
 };
 
 export const initDriveAuth = async (callback: (token: string) => void) => {
   const currentClientId = getClientId();
   if (!currentClientId) {
-    console.warn("Drive Sync Unavailable: Missing Google Client ID");
+    console.warn("Vault Sync Unavailable: Missing VITE_GOOGLE_CLIENT_ID");
     return;
   }
 
   const isLoaded = await waitForGoogleScript();
   if (!isLoaded) {
-    console.error("Google Identity Services script failed to load.");
+    console.error("Google Auth Script Timeout.");
     return;
   }
 
   try {
-    tokenClient = window.google.accounts.oauth2.initTokenClient({
+    tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: currentClientId,
       scope: SCOPES,
       callback: (tokenResponse: any) => {
@@ -44,32 +54,39 @@ export const initDriveAuth = async (callback: (token: string) => void) => {
         }
       },
       error_callback: (error: any) => {
-        console.error("Drive Auth Error:", error);
+        console.error("Vault Auth Fault:", error);
       }
     });
 
+    // If we already have a cached token, notify the app immediately
     if (accessToken) {
       callback(accessToken);
     }
   } catch (e) {
-    console.error("Failed to init token client", e);
+    console.error("Neural Link Init Error:", e);
   }
 };
 
+/**
+ * Triggers the Google OAuth consent flow.
+ */
 export const requestDriveToken = () => {
   if (tokenClient) {
-    tokenClient.requestAccessToken({ prompt: '' });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   } else {
     initDriveAuth((token) => {
-      if (tokenClient) tokenClient.requestAccessToken();
+      if (tokenClient) tokenClient.requestAccessToken({ prompt: 'consent' });
     });
   }
 };
 
 export const hasDriveToken = () => !!accessToken;
 
+/**
+ * Saves a new project file to the user's Google Drive.
+ */
 export const saveProjectToDrive = async (project: ProjectData): Promise<string> => {
-  if (!accessToken) throw new Error("No Access Token");
+  if (!accessToken) throw new Error("Terminal Unauthorized: Requesting Token...");
 
   const metadata = {
     name: `${project.name}.json`,
@@ -99,9 +116,9 @@ export const saveProjectToDrive = async (project: ProjectData): Promise<string> 
      if (response.status === 401) {
          localStorage.removeItem('obscura_drive_token');
          accessToken = null;
-         throw new Error("Token expired");
+         throw new Error("Neural link expired. Re-authenticate.");
      }
-     throw new Error(`Save failed: ${response.status}`);
+     throw new Error(`Sync Error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -109,7 +126,7 @@ export const saveProjectToDrive = async (project: ProjectData): Promise<string> 
 };
 
 export const updateProjectOnDrive = async (fileId: string, project: ProjectData): Promise<void> => {
-    if (!accessToken) throw new Error("No Access Token");
+    if (!accessToken) return;
     const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
       method: 'PATCH',
       headers: {
@@ -118,33 +135,30 @@ export const updateProjectOnDrive = async (fileId: string, project: ProjectData)
       },
       body: JSON.stringify(project)
     });
-    if (!response.ok) {
-       if (response.status === 401) {
-          localStorage.removeItem('obscura_drive_token');
-          accessToken = null;
-       }
-       throw new Error("Update failed");
+    if (!response.ok && response.status === 401) {
+      localStorage.removeItem('obscura_drive_token');
+      accessToken = null;
     }
 };
 
 export const listProjectsFromDrive = async (): Promise<DriveFile[]> => {
-    if (!accessToken) throw new Error("No Access Token");
+    if (!accessToken) throw new Error("Vault Locked");
     const query = "trashed = false and properties has { key='app', value='obscura' }";
     const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id, name, modifiedTime)`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
-    if (!response.ok) throw new Error("List failed");
+    if (!response.ok) throw new Error("Manifest retrieval failed.");
     const data = await response.json();
     return data.files || [];
 };
 
 export const loadProjectFromDrive = async (fileId: string): Promise<ProjectData> => {
-    if (!accessToken) throw new Error("No Access Token");
+    if (!accessToken) throw new Error("Vault Locked");
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${accessToken}` }
     });
-    if (!response.ok) throw new Error("Load failed");
+    if (!response.ok) throw new Error("Archive retrieval failed.");
     return await response.json();
 };
