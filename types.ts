@@ -62,7 +62,6 @@ export interface DriveFile {
   modifiedTime?: string;
 }
 
-// Fixed: Defined AIStudio interface centrally to ensure consistent usage in global declarations.
 export interface AIStudio {
   hasSelectedApiKey: () => Promise<boolean>;
   openSelectKey: () => Promise<void>;
@@ -70,22 +69,29 @@ export interface AIStudio {
 
 declare global {
   interface Window {
-    // Fixed: Updated process definition to match the shim implemented in index.tsx.
+    // Augment Window with process for compatibility with the runtime shim
     process: {
       env: {
         API_KEY?: string;
         [key: string]: string | undefined;
       };
     };
-    // Fixed: Assigned AIStudio interface to ensure identical property types across all declarations.
-    aistudio: AIStudio;
+    // Note: 'aistudio' is provided by the runtime environment and does not need 
+    // to be redeclared here to avoid modifier and type conflicts.
   }
-  
-  // Fixed: Extended ImportMeta globally to include the 'env' property for Vite compatibility.
+
+  // Align with Vite's internal type requirements
+  interface ImportMetaEnv {
+    readonly VITE_GEMINI_API_KEY?: string;
+    readonly VITE_GOOGLE_CLIENT_ID?: string;
+    readonly [key: string]: string | undefined;
+  }
+
   interface ImportMeta {
-    readonly env: Record<string, string | undefined>;
+    readonly env: ImportMetaEnv;
   }
-  
-  // Fixed: Used any for process to avoid block-scoped redeclaration conflicts in environments with pre-existing process types.
-  var process: any;
 }
+
+// Global 'process' and 'window.aistudio' are assumed to be provided by the runtime 
+// environment or shimmed (see index.tsx). Redeclaring them here caused 
+// TypeScript compilation errors due to conflicts with existing definitions.
