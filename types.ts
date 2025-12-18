@@ -68,19 +68,32 @@ export interface AIStudio {
 }
 
 declare global {
+  // Fix: Removed global 'process' declaration to avoid conflict with environment-provided block-scoped 'process'.
+  // Environmental 'process' is used for process.env.API_KEY as per instructions.
+
   interface Window {
-    // Augment Window with process for compatibility with the runtime shim
-    process: {
-      env: {
-        API_KEY?: string;
-        [key: string]: string | undefined;
-      };
-    };
-    // Note: 'aistudio' is provided by the runtime environment and does not need 
-    // to be redeclared here to avoid modifier and type conflicts.
+    /**
+     * Augment Window with 'process' for the runtime shim access.
+     */
+    // Fix: Using 'any' for process to avoid conflict with existing global declarations.
+    process: any;
+    
+    /**
+     * Augment Window with 'aistudio' to satisfy TS2339.
+     * This is provided by the AI Studio environment.
+     */
+    // Fix: Using 'any' for aistudio to resolve identical modifier and type identity conflicts with environment types.
+    aistudio: any;
+    
+    /**
+     * Google Identity Services (GSI) global.
+     */
+    google: any;
   }
 
-  // Align with Vite's internal type requirements
+  /**
+   * Vite-specific environment types.
+   */
   interface ImportMetaEnv {
     readonly VITE_GEMINI_API_KEY?: string;
     readonly VITE_GOOGLE_CLIENT_ID?: string;
@@ -92,6 +105,6 @@ declare global {
   }
 }
 
-// Global 'process' and 'window.aistudio' are assumed to be provided by the runtime 
-// environment or shimmed (see index.tsx). Redeclaring them here caused 
-// TypeScript compilation errors due to conflicts with existing definitions.
+// Exporting an empty object ensures this file is treated as a module
+// while the 'declare global' block handles the global augmentation.
+export {};
