@@ -2,28 +2,35 @@
 import { ProjectData, DriveFile } from '../types';
 
 const getClientId = () => {
-  return import.meta.env?.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';
+  const win = window as any;
+  return (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || win.process?.env?.VITE_GOOGLE_CLIENT_ID || '';
 };
 
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
-let tokenClient: any;
+let tokenClient: any = null;
 let accessToken: string | null = localStorage.getItem('obscura_drive_token');
 
 const waitForGoogleScript = async () => {
   let attempts = 0;
-  while (!window.google && attempts < 50) {
+  while (!window.google?.accounts?.oauth2 && attempts < 50) {
     await new Promise((resolve) => setTimeout(resolve, 200));
     attempts++;
   }
-  return !!window.google;
+  return !!window.google?.accounts?.oauth2;
 };
 
 export const initDriveAuth = async (callback: (token: string) => void) => {
   const currentClientId = getClientId();
-  if (!currentClientId) return;
+  if (!currentClientId) {
+    console.warn("Drive Sync Unavailable: Missing Google Client ID");
+    return;
+  }
 
   const isLoaded = await waitForGoogleScript();
-  if (!isLoaded) return;
+  if (!isLoaded) {
+    console.error("Google Identity Services script failed to load.");
+    return;
+  }
 
   try {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -36,10 +43,14 @@ export const initDriveAuth = async (callback: (token: string) => void) => {
           callback(accessToken!);
         }
       },
-      error_callback: (error: any) => console.error("Drive Auth Error:", error)
+      error_callback: (error: any) => {
+        console.error("Drive Auth Error:", error);
+      }
     });
 
-    if (accessToken) callback(accessToken);
+    if (accessToken) {
+      callback(accessToken);
+    }
   } catch (e) {
     console.error("Failed to init token client", e);
   }
@@ -49,7 +60,9 @@ export const requestDriveToken = () => {
   if (tokenClient) {
     tokenClient.requestAccessToken({ prompt: '' });
   } else {
-    initDriveAuth(() => { if (tokenClient) tokenClient.requestAccessToken(); });
+    initDriveAuth((token) => {
+      if (tokenClient) tokenClient.requestAccessToken();
+    });
   }
 };
 

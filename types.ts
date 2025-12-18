@@ -64,56 +64,21 @@ export interface DriveFile {
 
 declare global {
   /**
-   * Consolidating global augmentations into a single location.
+   * We remove the explicit global 'process' variable declaration here to resolve 
+   * "Cannot redeclare block-scoped variable 'process'" errors occurring in 
+   * environments where 'process' is already defined (e.g. by Vite or Node types).
    */
+
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;
     openSelectKey: () => Promise<void>;
   }
 
-  /**
-   * Fix: Use any for process to avoid type collision with existing global Process type.
-   * Following guideline: Do not manually define process.env.
-   */
-  var process: any;
-
   interface Window {
-    /**
-     * Augmenting window with process for the runtime shim access.
-     */
     process: any;
-    
-    /**
-     * Augmenting window with aistudio to satisfy TS2339 and resolve type collision.
-     */
     aistudio?: AIStudio;
-    
-    /**
-     * Google Identity Services (GSI) global.
-     */
     google: any;
-
-    /**
-     * html2canvas for PDF export.
-     */
     html2canvas: any;
-
-    /**
-     * jspdf for PDF export.
-     */
     jspdf: any;
-  }
-
-  /**
-   * Augmenting ImportMeta to align with Vite's expected environment types.
-   */
-  interface ImportMetaEnv {
-    readonly VITE_GEMINI_API_KEY?: string;
-    readonly VITE_GOOGLE_CLIENT_ID?: string;
-    readonly [key: string]: string | undefined;
-  }
-
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
   }
 }

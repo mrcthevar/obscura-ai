@@ -8,7 +8,8 @@ interface LandingProps {
 
 const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   const [activeClientId] = useState<string>(() => {
-     return import.meta.env?.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';
+     const win = window as any;
+     return (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || win.process?.env?.VITE_GOOGLE_CLIENT_ID || '';
   });
 
   const decodeJwt = (token: string): any => {
@@ -49,8 +50,10 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
 
   useEffect(() => {
     if (!activeClientId) return;
+    
+    let isMounted = true;
     const initGSI = () => {
-      if (window.google && window.google.accounts) {
+      if (window.google && window.google.accounts && isMounted) {
         try {
           window.google.accounts.id.initialize({
             client_id: activeClientId,
@@ -58,6 +61,7 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
             auto_select: false,
             theme: 'filled_black'
           });
+          
           const parent = document.getElementById('google-btn-wrapper');
           if (parent) {
              parent.innerHTML = '';
@@ -69,12 +73,16 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
                logo_alignment: 'center'
              });
           }
-        } catch (e) {}
-      } else {
+        } catch (e) {
+          console.error("GSI Init Error:", e);
+        }
+      } else if (isMounted) {
         setTimeout(initGSI, 500);
       }
     };
+    
     initGSI();
+    return () => { isMounted = false; };
   }, [activeClientId, handleCredentialResponse]);
 
   return (
@@ -82,7 +90,6 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
       <div className="film-grain"></div>
       <div className="cinematic-vignette"></div>
 
-      {/* Atmospheric Lighting - Dynamic Accent */}
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vh] bg-[var(--accent)]/[0.03] blur-[120px] rounded-full pointer-events-none"></div>
 
       <div className="w-full max-w-2xl px-12 z-50 flex flex-col items-center animate-fade-in">
@@ -100,8 +107,13 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
 
         <div className="w-full max-w-sm space-y-12">
           <div className="flex flex-col gap-4">
-            {activeClientId && (
-               <div id="google-btn-wrapper" className="w-full flex justify-center opacity-80 hover:opacity-100 transition-opacity"></div>
+            {activeClientId ? (
+               <div id="google-btn-wrapper" className="w-full min-h-[50px] flex justify-center opacity-80 hover:opacity-100 transition-opacity"></div>
+            ) : (
+               <div className="text-center p-4 border border-white/5 rounded-2xl bg-white/[0.02]">
+                 <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Client ID Missing</p>
+                 <p className="text-[9px] text-zinc-700 mt-1">Configure VITE_GOOGLE_CLIENT_ID for Secure Login</p>
+               </div>
             )}
           </div>
 

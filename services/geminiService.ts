@@ -28,14 +28,12 @@ export const streamModuleContent = async (
   imageFile: File | null,
   onChunk: (text: string) => void
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API Key (process.env.API_KEY) is not configured in the environment.");
-  }
-
-  // Initialize client with key from process.env as required by guidelines
+  // Initialize client with process.env.API_KEY. 
+  // We rely on the index.tsx shim for browser environments.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
-  // Using gemini-3-pro-preview for complex reasoning and cinematographic analysis
+  
+  // Using gemini-3-pro-preview for high-level creative reasoning and technical analysis
   const modelName = 'gemini-3-pro-preview'; 
 
   try {
@@ -70,11 +68,11 @@ export const streamModuleContent = async (
         onChunk(text);
       }
     }
-    if (!fullText) throw new Error("No response generated");
+    if (!fullText) throw new Error("Synthesis failed to converge. No output received.");
     return fullText;
   } catch (error: any) {
     console.error("Gemini Service Error:", error);
-    throw new Error(error.message || "Failed to generate content.");
+    throw new Error(error.message || "Neural uplink failure.");
   }
 };
 
@@ -82,10 +80,7 @@ export const generateSingleFrame = async (
   description: string,
   shotSpecs: string
 ): Promise<string> => {
-  if (!process.env.API_KEY) throw new Error("API Key missing");
-  
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  // Using gemini-3-pro-preview for complex SVG generation tasks
   const modelName = 'gemini-3-pro-preview';
 
   try {
@@ -105,10 +100,10 @@ export const generateSingleFrame = async (
     if (text) {
       text = text.replace(/```svg/g, '').replace(/```/g, '').trim();
     }
-    if (!text) throw new Error("No SVG generated");
+    if (!text) throw new Error("SVG synthesis failed.");
     return text;
   } catch (error: any) {
     console.error("Single Frame Generation Error:", error);
-    throw new Error("Failed to regenerate frame.");
+    throw new Error("Neural redraw failed.");
   }
 };

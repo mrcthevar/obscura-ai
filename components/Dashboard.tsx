@@ -340,9 +340,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   <div className="bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-3xl p-8 shadow-inner">
                     <div className="flex items-center gap-4 mb-6 text-green-500">
                       <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.6)]"></div>
-                      <span className="text-xs font-bold font-mono uppercase tracking-tighter">Encrypted Uplink Established</span>
+                      <span className="text-xs font-bold font-mono uppercase tracking-tighter">System Ready</span>
                     </div>
-                    <p className="text-xs text-[var(--text-secondary)] mb-8 leading-relaxed font-light">Local-only key injection active. All contextual processing occurs within the hardware-accelerated viewport.</p>
+                    <p className="text-xs text-[var(--text-secondary)] mb-8 leading-relaxed font-light">
+                      Encryption active. All neural processing is secured via your primary environment key.
+                    </p>
                     <div className="grid grid-cols-1 gap-3">
                       <button onClick={onLogout} className="w-full bg-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-studio)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all">Disconnect System</button>
                     </div>
