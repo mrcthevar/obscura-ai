@@ -2,130 +2,133 @@
 import React, { useState, useEffect } from 'react';
 
 interface GatekeeperProps {
-  onSuccess: () => void;
+  onSuccess: (key?: string) => void;
 }
 
 const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
-  const [isChecking, setIsChecking] = useState(true);
+  const [manualKey, setManualKey] = useState('');
   const [status, setStatus] = useState<{
     envKey: boolean;
-    googleAuth: boolean;
     sdkReady: boolean;
-  }>({ envKey: false, googleAuth: false, sdkReady: false });
+  }>({ envKey: false, sdkReady: false });
 
   useEffect(() => {
-    const checkSystems = async () => {
-      // Check if process.env.API_KEY is actually populated
-      const hasEnvKey = !!process.env.API_KEY && process.env.API_KEY.length > 5;
-      const hasAistudio = !!window.aistudio;
+    const checkSystems = () => {
+      // Check for key in environment or existing localStorage
+      const hasKey = !!process.env.API_KEY && process.env.API_KEY.length > 5;
+      const hasSdk = !!(window as any).aistudio;
       
       setStatus({
-        envKey: hasEnvKey,
-        googleAuth: !!window.google?.accounts?.id,
-        sdkReady: hasAistudio
+        envKey: hasKey,
+        sdkReady: hasSdk
       });
       
-      // If we have a hardcoded environment key, we can proceed automatically
-      if (hasEnvKey) {
-        setTimeout(() => onSuccess(), 1000);
-      } else {
-        setIsChecking(false);
+      // If a key is already present (e.g. from environment or previously saved), auto-advance
+      if (hasKey) {
+        onSuccess(process.env.API_KEY);
       }
     };
     checkSystems();
   }, [onSuccess]);
 
-  const handleConnectKey = async () => {
-    try {
-      if (window.aistudio) {
-        await window.aistudio.openSelectKey();
-        // Proceed immediately to satisfy the race condition rule
+  const handleManualEntry = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = manualKey.trim();
+    if (cleanKey.length < 10) {
+      alert("Please enter a valid Gemini API Key.");
+      return;
+    }
+
+    // Save to localStorage for persistence
+    localStorage.setItem('obscura_api_key', cleanKey);
+    
+    // Inject into the runtime shim immediately for non-reactive code
+    if (!(window as any).process) (window as any).process = { env: {} };
+    if (!(window as any).process.env) (window as any).process.env = {};
+    (window as any).process.env.API_KEY = cleanKey;
+
+    onSuccess(cleanKey);
+  };
+
+  const handleLinkSelection = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio) {
+      try {
+        await aistudio.openSelectKey();
         onSuccess();
-      } else {
-        alert("Neural Uplink (AI Studio) is not available in this environment.");
+      } catch (e) {
+        console.error("Link failed", e);
       }
-    } catch (e) {
-      console.error("Key selection failed", e);
     }
   };
 
-  if (isChecking && status.envKey) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-12 h-12 border-2 border-[var(--accent)]/20 border-t-[var(--accent)] rounded-full animate-spin"></div>
-          <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-[0.5em] animate-pulse">Initializing Neural Link...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-12 text-white overflow-hidden relative">
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8 text-white relative overflow-hidden">
       <div className="film-grain"></div>
       <div className="cinematic-vignette"></div>
+      
+      {/* Background Ambience */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--accent)]/[0.05] blur-[120px] rounded-full pointer-events-none"></div>
 
-      <div className="w-full max-w-xl z-50 animate-fade-in">
-        <div className="mb-16 text-center">
-          <div className="inline-block px-4 py-1.5 rounded-full border border-[var(--accent)]/30 text-[9px] font-black font-mono text-[var(--accent)] uppercase tracking-[0.4em] mb-8 animate-pulse">
-            System Authorization Required
+      <div className="w-full max-w-lg z-50 flex flex-col items-center animate-fade-in">
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/5 bg-white/[0.02] mb-8">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_#F59E0B]"></div>
+            <span className="text-[9px] font-black font-mono text-zinc-400 uppercase tracking-[0.3em]">System Initialization Protocol</span>
           </div>
-          <h2 className="text-4xl font-brand tracking-tighter mb-4">Neural Gatekeeper</h2>
+          <h2 className="text-5xl font-brand tracking-tighter mb-4">Neural Gate</h2>
           <p className="text-zinc-500 font-light text-sm max-w-xs mx-auto leading-relaxed">
-            OBSCURA requires a valid Gemini API key to operate the cinematic intelligence modules.
+            Unlock the studio by pasting your API key. No coding or complex setup required.
           </p>
         </div>
 
-        <div className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 space-y-8 backdrop-blur-xl">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-5 rounded-2xl bg-black/40 border border-white/5">
-              <div className="flex items-center gap-4">
-                <div className={`w-2 h-2 rounded-full ${status.envKey ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-amber-500 shadow-[0_0_10px_#f59e0b]'}`}></div>
-                <span className="text-[10px] font-black font-mono uppercase tracking-widest text-zinc-400">Environment API Key</span>
-              </div>
-              <span className={`text-[9px] font-mono ${status.envKey ? 'text-green-500' : 'text-amber-500 italic'}`}>
-                {status.envKey ? 'CONNECTED' : 'NOT_FOUND'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-5 rounded-2xl bg-black/40 border border-white/5">
-              <div className="flex items-center gap-4">
-                <div className={`w-2 h-2 rounded-full ${status.sdkReady ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'}`}></div>
-                <span className="text-[10px] font-black font-mono uppercase tracking-widest text-zinc-400">AI Studio Plugin</span>
-              </div>
-              <span className={`text-[9px] font-mono ${status.sdkReady ? 'text-green-500' : 'text-red-500'}`}>
-                {status.sdkReady ? 'ACTIVE' : 'INACTIVE'}
-              </span>
+        <form onSubmit={handleManualEntry} className="w-full space-y-6">
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-3xl blur opacity-30 group-focus-within:opacity-100 transition duration-1000"></div>
+            <div className="relative">
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-amber-500 font-mono text-sm opacity-50">&gt;</span>
+              <input 
+                type="password"
+                value={manualKey}
+                onChange={(e) => setManualKey(e.target.value)}
+                placeholder="Paste API Key here..."
+                className="w-full bg-black border border-white/10 rounded-3xl py-6 pl-12 pr-6 text-sm font-mono tracking-widest outline-none focus:border-amber-500/50 transition-all placeholder:text-zinc-800"
+                autoFocus
+              />
             </div>
           </div>
 
-          <div className="pt-4">
-            <button 
-              onClick={handleConnectKey}
-              className="w-full py-5 bg-[var(--accent)] text-black rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-white transition-all shadow-2xl active:scale-95"
-            >
-              Select API Key
-            </button>
-            <p className="text-center mt-6 text-[9px] text-zinc-600 font-mono tracking-tighter leading-relaxed">
-              Selection via AI Studio ensures your key is handled securely by the platform. 
-              <br/>
-              <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-[var(--accent)] underline mt-2 inline-block">Billing Documentation</a>
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-16 flex flex-col items-center gap-4">
-          <p className="text-[9px] text-zinc-700 font-mono uppercase tracking-widest">Diagnostic Log</p>
-          {!status.googleAuth && (
-            <div className="text-[8px] text-amber-500/70 font-mono max-w-sm text-center leading-loose border border-amber-500/20 p-4 rounded-xl">
-              WARNING: origin_mismatch detected. Google Login is unavailable. 
-              Please add your deployment URL to "Authorized JavaScript origins" in Google Cloud Console.
-            </div>
-          )}
-          <button onClick={onSuccess} className="text-zinc-600 hover:text-white transition-colors text-[9px] font-black uppercase tracking-[0.3em] border-b border-zinc-800 pb-1 mt-4">
-            Bypass to Dashboard
+          <button 
+            type="submit"
+            className="w-full py-5 bg-white text-black rounded-3xl font-black text-xs uppercase tracking-[0.4em] shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:bg-[var(--accent)] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all duration-500 active:scale-95"
+          >
+            Authorize System
           </button>
+        </form>
+
+        <div className="mt-12 w-full space-y-4">
+           {status.sdkReady && (
+             <button 
+               onClick={handleLinkSelection}
+               className="w-full py-4 border border-white/5 bg-white/[0.01] rounded-2xl text-[9px] font-black text-zinc-500 uppercase tracking-[0.3em] hover:bg-white/5 transition-all"
+             >
+               Use Neural Link (AI Studio)
+             </button>
+           )}
+           
+           <div className="p-8 border border-white/5 bg-white/[0.01] rounded-[2.5rem] text-center">
+             <h4 className="text-[9px] font-black text-zinc-700 uppercase tracking-widest mb-3 font-mono">Simple Setup</h4>
+             <p className="text-[10px] text-zinc-600 leading-relaxed font-mono">
+               Need a key? Visit <a href="https://aistudio.google.com/" target="_blank" className="text-amber-500/50 hover:text-amber-500 underline font-bold">Google AI Studio</a> to get one for free. 
+               <br/><br/>
+               Paste it above and you're ready to create.
+             </p>
+           </div>
         </div>
+      </div>
+
+      <div className="absolute bottom-12 text-[9px] font-mono text-zinc-900 tracking-[0.5em] uppercase pointer-events-none">
+        Obscura OS // Synthesis Engine v1.0.6
       </div>
     </div>
   );

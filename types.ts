@@ -1,4 +1,5 @@
 
+
 export enum AppState {
   LANDING = 'LANDING',
   GATEKEEPER = 'GATEKEEPER',
@@ -62,17 +63,15 @@ export interface DriveFile {
   modifiedTime?: string;
 }
 
-export interface AIStudio {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
 declare global {
   /**
    * Consolidating global augmentations into a single location.
-   * Removing the explicit 'var process' declaration to avoid "Cannot redeclare block-scoped variable" 
-   * when process is already provided by environment types or shims.
    */
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
   interface Window {
     /**
      * Augmenting window with process for the runtime shim access.
@@ -80,9 +79,12 @@ declare global {
     process: any;
     
     /**
-     * Augmenting window with aistudio to satisfy TS2339.
+     * Augmenting window with aistudio to satisfy TS2339 and resolve type collision.
+     * Fixed: changed to optional 'aistudio?' to match platform declaration and moved 
+     * AIStudio interface into global scope to resolve "Same type" collision where 
+     * AIStudio was previously defined in both local and global namespaces.
      */
-    aistudio: AIStudio;
+    aistudio?: AIStudio;
     
     /**
      * Google Identity Services (GSI) global.

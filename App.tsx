@@ -10,16 +10,13 @@ import { ApiKeyContext } from './contexts/ApiKeyContext';
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.LANDING);
   const [user, setUser] = useState<UserProfile | null>(null);
-  
-  // Directly use mandated environment key from the shimmed process.env
-  const apiKey = process.env.API_KEY || '';
+  const [apiKey, setApiKey] = useState<string>(process.env.API_KEY || '');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('obscura_user');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      // If we already have a user, we check if we need to gate them
       setAppState(AppState.GATEKEEPER);
     }
   }, []);
@@ -36,7 +33,12 @@ const App: React.FC = () => {
     setAppState(AppState.LANDING);
   };
 
-  const handleGatePassed = () => {
+  const handleGatePassed = (newKey?: string) => {
+    if (newKey) {
+      setApiKey(newKey);
+    } else {
+      setApiKey(process.env.API_KEY || '');
+    }
     setAppState(AppState.DASHBOARD);
   };
 

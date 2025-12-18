@@ -1,14 +1,14 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { AIStudio } from "../types";
 
-// Fixed: Removed redundant declare global block that conflicted with centralized definitions in types.ts.
+// Removed AIStudio import as it is now globally available via declare global in types.ts.
 
 export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: string): Promise<string> => {
   // Mandatory check for gemini-3-pro-image-preview key selection
-  const hasKey = await window.aistudio.hasSelectedApiKey();
+  // Using optional chaining as aistudio is now declared as optional on Window
+  const hasKey = await window.aistudio?.hasSelectedApiKey();
   if (!hasKey) {
-    await window.aistudio.openSelectKey();
+    await window.aistudio?.openSelectKey();
     // Instructions mandate assuming success after openSelectKey to avoid race conditions
   }
 
@@ -45,7 +45,7 @@ export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: str
   } catch (error: any) {
     if (error.message?.includes("Requested entity was not found")) {
         // Handle race condition/stale key by re-prompting
-        await window.aistudio.openSelectKey();
+        await window.aistudio?.openSelectKey();
     }
     console.error("Image Gen Error:", error);
     throw new Error(error.message || "Failed to generate image.");
