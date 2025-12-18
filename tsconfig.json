@@ -22,7 +22,6 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Environment Types */
-    "types": ", "vite/client"]  },
-  "include": ["**/*.ts", "**/*.tsx"],
+    "types": ["vite/client"] },  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }
