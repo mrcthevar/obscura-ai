@@ -17,14 +17,16 @@ const App: React.FC = () => {
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      setAppState(AppState.GATEKEEPER);
+      // Skip Gatekeeper and go directly to Dashboard as per guidelines
+      setAppState(AppState.DASHBOARD);
     }
   }, []);
 
   const handleSignIn = (userProfile: UserProfile) => {
     localStorage.setItem('obscura_user', JSON.stringify(userProfile));
     setUser(userProfile);
-    setAppState(AppState.GATEKEEPER);
+    // Skip Gatekeeper and go directly to Dashboard as per guidelines
+    setAppState(AppState.DASHBOARD);
   };
 
   const handleLogout = () => {

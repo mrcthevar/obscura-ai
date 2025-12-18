@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserProfile, ModuleId, ProjectData, DriveFile } from '../types';
 import { MODULES } from '../constants';
@@ -343,7 +344,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     </div>
                     <p className="text-xs text-[var(--text-secondary)] mb-8 leading-relaxed font-light">Local-only key injection active. All contextual processing occurs within the hardware-accelerated viewport.</p>
                     <div className="grid grid-cols-1 gap-3">
-                      <button onClick={() => { if(confirm("Flush keys?")) { localStorage.removeItem('gemini_api_key'); window.location.reload(); } }} className="w-full bg-red-500/5 text-red-500 hover:bg-red-600 hover:text-white border border-red-500/10 py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all">Flush Keys</button>
                       <button onClick={onLogout} className="w-full bg-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-studio)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all">Disconnect System</button>
                     </div>
                   </div>

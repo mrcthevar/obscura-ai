@@ -28,15 +28,15 @@ export const streamModuleContent = async (
   imageFile: File | null,
   onChunk: (text: string) => void
 ): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("System Authorization Required. Please set your API Key in the Gatekeeper or Settings.");
+  if (!process.env.API_KEY) {
+    throw new Error("API Key (process.env.API_KEY) is not configured in the environment.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  // Initialize client with key from process.env as required by guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
-  // Using flash for general tasks to ensure broader compatibility with keys
-  const modelName = 'gemini-3-flash-preview'; 
+  // Using gemini-3-pro-preview for complex reasoning and cinematographic analysis
+  const modelName = 'gemini-3-pro-preview'; 
 
   try {
     const parts: any[] = [];
@@ -82,11 +82,11 @@ export const generateSingleFrame = async (
   description: string,
   shotSpecs: string
 ): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key missing");
+  if (!process.env.API_KEY) throw new Error("API Key missing");
   
-  const ai = new GoogleGenAI({ apiKey });
-  const modelName = 'gemini-3-flash-preview';
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Using gemini-3-pro-preview for complex SVG generation tasks
+  const modelName = 'gemini-3-pro-preview';
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({

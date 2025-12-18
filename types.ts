@@ -1,5 +1,4 @@
 
-
 export enum AppState {
   LANDING = 'LANDING',
   GATEKEEPER = 'GATEKEEPER',
@@ -72,6 +71,12 @@ declare global {
     openSelectKey: () => Promise<void>;
   }
 
+  /**
+   * Fix: Use any for process to avoid type collision with existing global Process type.
+   * Following guideline: Do not manually define process.env.
+   */
+  var process: any;
+
   interface Window {
     /**
      * Augmenting window with process for the runtime shim access.
@@ -80,9 +85,6 @@ declare global {
     
     /**
      * Augmenting window with aistudio to satisfy TS2339 and resolve type collision.
-     * Fixed: changed to optional 'aistudio?' to match platform declaration and moved 
-     * AIStudio interface into global scope to resolve "Same type" collision where 
-     * AIStudio was previously defined in both local and global namespaces.
      */
     aistudio?: AIStudio;
     

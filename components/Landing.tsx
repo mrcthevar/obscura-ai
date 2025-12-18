@@ -7,11 +7,9 @@ interface LandingProps {
 }
 
 const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
-  const [showConfig, setShowConfig] = useState(false);
-  const [activeClientId, setActiveClientId] = useState<string>(() => {
+  const [activeClientId] = useState<string>(() => {
      return import.meta.env?.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';
   });
-  const [manualClientId, setManualClientId] = useState('');
 
   const decodeJwt = (token: string): any => {
     try {
@@ -47,16 +45,6 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
       picture: "", 
       isGuest: true
     });
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualClientId.trim()) {
-      const newId = manualClientId.trim();
-      localStorage.setItem('obscura_client_id', newId);
-      setActiveClientId(newId);
-      setShowConfig(false);
-    }
   };
 
   useEffect(() => {
@@ -112,15 +100,8 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
 
         <div className="w-full max-w-sm space-y-12">
           <div className="flex flex-col gap-4">
-            {activeClientId ? (
+            {activeClientId && (
                <div id="google-btn-wrapper" className="w-full flex justify-center opacity-80 hover:opacity-100 transition-opacity"></div>
-            ) : (
-               <button 
-                 onClick={() => setShowConfig(true)}
-                 className="w-full py-4 border border-white/10 hover:border-[var(--accent)]/50 text-white text-[11px] font-black tracking-[0.2em] uppercase transition-all duration-500 hover:shadow-[0_0_20px_var(--shadow-glow)] active:scale-95 bg-black"
-               >
-                 INITIALIZE SYSTEM
-               </button>
             )}
           </div>
 
@@ -142,38 +123,9 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
             </button>
           </div>
         </div>
-
-        {showConfig && (
-          <div className="mt-12 w-full max-w-sm p-6 bg-white/[0.02] border border-white/5 rounded-2xl animate-fade-in">
-             <div className="flex justify-between items-center mb-4">
-               <span className="text-[9px] font-mono text-zinc-500 tracking-widest uppercase">System Hook</span>
-               {activeClientId && <button onClick={() => {localStorage.removeItem('obscura_client_id'); window.location.reload();}} className="text-[9px] text-red-500 font-bold hover:underline">RESET_ID</button>}
-             </div>
-             {!activeClientId ? (
-                <form onSubmit={handleManualSubmit} className="flex flex-col gap-3">
-                  <input 
-                    type="text" 
-                    placeholder="CLIENT_ID_KEY"
-                    value={manualClientId}
-                    onChange={(e) => setManualClientId(e.target.value)}
-                    className="bg-black border border-white/10 text-white text-[10px] px-4 py-3 outline-none focus:border-[var(--accent)]/50 font-mono transition-colors"
-                  />
-                  <button type="submit" className="bg-white text-black text-[9px] py-2 font-black uppercase tracking-widest hover:bg-[var(--accent)] transition-colors">LINK_ID</button>
-                </form>
-             ) : (
-                <div className="text-[9px] text-[var(--accent)]/50 font-mono truncate select-all">{activeClientId}</div>
-             )}
-          </div>
-        )}
       </div>
 
       <footer className="fixed bottom-12 left-0 right-0 z-50 flex flex-col items-center gap-4 pointer-events-none">
-        <button 
-          onClick={() => setShowConfig(!showConfig)} 
-          className="text-[9px] text-zinc-700 hover:text-zinc-500 transition-colors uppercase tracking-[0.4em] pointer-events-auto select-none"
-        >
-          SYSTEM_CONFIG
-        </button>
         <div className="flex items-center gap-3 text-zinc-800 font-mono text-[9px] tracking-tighter">
           <span>SERVER_STATUS:</span>
           <span className="text-zinc-500 font-bold">ONLINE</span>
