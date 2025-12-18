@@ -68,31 +68,40 @@ export interface AIStudio {
 }
 
 declare global {
-  // Fix: Removed global 'process' declaration to avoid conflict with environment-provided block-scoped 'process'.
-  // Environmental 'process' is used for process.env.API_KEY as per instructions.
-
+  /**
+   * Consolidating global augmentations into a single location.
+   * Removing the explicit 'var process' declaration to avoid "Cannot redeclare block-scoped variable" 
+   * when process is already provided by environment types or shims.
+   */
   interface Window {
     /**
-     * Augment Window with 'process' for the runtime shim access.
+     * Augmenting window with process for the runtime shim access.
      */
-    // Fix: Using 'any' for process to avoid conflict with existing global declarations.
     process: any;
     
     /**
-     * Augment Window with 'aistudio' to satisfy TS2339.
-     * This is provided by the AI Studio environment.
+     * Augmenting window with aistudio to satisfy TS2339.
      */
-    // Fix: Using 'any' for aistudio to resolve identical modifier and type identity conflicts with environment types.
-    aistudio: any;
+    aistudio: AIStudio;
     
     /**
      * Google Identity Services (GSI) global.
      */
     google: any;
+
+    /**
+     * html2canvas for PDF export.
+     */
+    html2canvas: any;
+
+    /**
+     * jspdf for PDF export.
+     */
+    jspdf: any;
   }
 
   /**
-   * Vite-specific environment types.
+   * Augmenting ImportMeta to align with Vite's expected environment types.
    */
   interface ImportMetaEnv {
     readonly VITE_GEMINI_API_KEY?: string;
@@ -104,7 +113,3 @@ declare global {
     readonly env: ImportMetaEnv;
   }
 }
-
-// Exporting an empty object ensures this file is treated as a module
-// while the 'declare global' block handles the global augmentation.
-export {};

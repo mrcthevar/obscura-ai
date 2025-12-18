@@ -1,10 +1,5 @@
-import { ProjectData, DriveFile } from '../types';
 
-declare global {
-  interface Window {
-    google: any;
-  }
-}
+import { ProjectData, DriveFile } from '../types';
 
 const getClientId = () => {
   return import.meta.env?.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('obscura_client_id') || '';

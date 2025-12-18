@@ -1,11 +1,6 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { UserProfile } from '../types';
-
-declare global {
-  interface Window {
-    google: any;
-  }
-}
 
 interface LandingProps {
   onSignIn: (user: UserProfile) => void;

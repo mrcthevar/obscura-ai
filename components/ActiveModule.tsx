@@ -1,16 +1,10 @@
+
 import React, { useState, useRef, useContext, useEffect } from 'react';
 import { ModuleDefinition, ModuleId, StoryboardFrame } from '../types';
 import { streamModuleContent, generateSingleFrame } from '../services/geminiService';
 import { generateCinematicImage } from '../services/bananaProService';
 import { ApiKeyContext } from '../contexts/ApiKeyContext';
 import MobileHeader from './MobileHeader';
-
-declare global {
-  interface Window {
-    html2canvas: any;
-    jspdf: any;
-  }
-}
 
 interface ActiveModuleProps {
   module: ModuleDefinition;
@@ -256,7 +250,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         )}
 
         {output && module.id !== ModuleId.STORYBOARD && (
-          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[3rem] p-12 shadow-sm animate-slide-up backdrop-blur-[2px]">
+          <div className="bg-[var(--bg-card)] border border border-[var(--border-subtle)] rounded-[3rem] p-12 shadow-sm animate-slide-up backdrop-blur-[2px]">
              <div 
                className="prose prose-invert max-w-none text-[var(--text-secondary)] font-inter text-sm leading-[1.8] marker:text-[var(--accent)]"
                dangerouslySetInnerHTML={{ __html: output }}
