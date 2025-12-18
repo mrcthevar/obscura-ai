@@ -1,3 +1,5 @@
+
+
 export enum AppState {
   LANDING = 'LANDING',
   GATEKEEPER = 'GATEKEEPER',
@@ -67,6 +69,7 @@ export interface DriveFile {
 }
 
 declare global {
+  // Removed conflicting process declaration as it is provided by the execution context environment
   interface ImportMetaEnv {
     readonly VITE_GEMINI_API_KEY?: string;
     readonly VITE_GOOGLE_CLIENT_ID?: string;
