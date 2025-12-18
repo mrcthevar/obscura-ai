@@ -13,7 +13,9 @@ const FlashlightCursor: React.FC = () => {
     const updatePosition = () => {
       if (cursorRef.current) {
         const { x, y } = positionRef.current;
-        cursorRef.current.style.background = `radial-gradient(600px circle at ${x}px ${y}px, rgba(255, 215, 0, 0.03), transparent 40%)`;
+        // Use var(--accent) for the glow effect
+        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+        cursorRef.current.style.background = `radial-gradient(600px circle at ${x}px ${y}px, ${accentColor}08, transparent 40%)`;
       }
       requestAnimationFrame(updatePosition);
     };
@@ -31,9 +33,6 @@ const FlashlightCursor: React.FC = () => {
     <div
       ref={cursorRef}
       className="pointer-events-none fixed inset-0 z-40 transition-opacity duration-300"
-      style={{
-        background: `radial-gradient(600px circle at 0px 0px, rgba(255, 215, 0, 0.03), transparent 40%)`,
-      }}
     />
   );
 };

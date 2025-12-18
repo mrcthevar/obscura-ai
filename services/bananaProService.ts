@@ -1,13 +1,29 @@
+
 import { GoogleGenAI } from "@google/genai";
 
-export const generateCinematicImage = async (prompt: string, apiKey: string): Promise<string> => {
-  if (!apiKey) {
-    throw new Error("Missing API Key. Please configure in Gatekeeper.");
+declare global {
+  // Define the AIStudio interface within the global scope to provide types for the aistudio object on window.
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-  
-  // Using the "Banana Pro" equivalent model for high-quality generation
+  interface Window {
+    // Added readonly modifier to match existing global declarations and prevent identical modifier errors.
+    readonly aistudio: AIStudio;
+  }
+}
+
+export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: string): Promise<string> => {
+  // Mandatory check for gemini-3-pro-image-preview key selection
+  const hasKey = await window.aistudio.hasSelectedApiKey();
+  if (!hasKey) {
+    await window.aistudio.openSelectKey();
+    // Instructions mandate assuming success after openSelectKey to avoid race conditions
+  }
+
+  // Create new instance right before call to get up-to-date key
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const modelName = 'gemini-3-pro-image-preview';
 
   try {
@@ -24,10 +40,10 @@ export const generateCinematicImage = async (prompt: string, apiKey: string): Pr
       }
     });
 
-    // Iterate through parts to find the image
     const candidates = response.candidates;
     if (candidates && candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
       for (const part of candidates[0].content.parts) {
+        // Find the image part, do not assume it is the first part.
         if (part.inlineData) {
           const base64Data = part.inlineData.data;
           const mimeType = part.inlineData.mimeType || 'image/png';
@@ -35,11 +51,13 @@ export const generateCinematicImage = async (prompt: string, apiKey: string): Pr
         }
       }
     }
-
     throw new Error("No image data found in response.");
-
   } catch (error: any) {
-    console.error("Banana Pro Service Error:", error);
+    if (error.message?.includes("Requested entity was not found")) {
+        // Handle race condition/stale key by re-prompting
+        await window.aistudio.openSelectKey();
+    }
+    console.error("Image Gen Error:", error);
     throw new Error(error.message || "Failed to generate image.");
   }
 };

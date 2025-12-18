@@ -1,3 +1,4 @@
+
 import { ModuleDefinition, ModuleId } from './types';
 
 export const MODULES: ModuleDefinition[] = [
@@ -65,9 +66,9 @@ export const MODULES: ModuleDefinition[] = [
 
 const ANALYSIS_LOG_INSTRUCTION = `
   <br>
-  <div class='mt-8 border-t border-gray-800 pt-4 opacity-70'>
-    <h4 class='text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 font-inter'>Analysis Log</h4>
-    <ul class='list-none space-y-1 text-[10px] text-gray-600 font-mono'>
+  <div class='mt-8 border-t border-[var(--border-subtle)] pt-4 opacity-70'>
+    <h4 class='text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 font-inter'>Analysis Log</h4>
+    <ul class='list-none space-y-1 text-[10px] text-[var(--text-secondary)] font-mono'>
       <li class='flex items-center gap-2'><span class='w-1 h-1 bg-green-500 rounded-full'></span> Input processed successfully</li>
       <li class='flex items-center gap-2'><span class='w-1 h-1 bg-green-500 rounded-full'></span> Contextual vectors aligned</li>
       <li class='flex items-center gap-2'><span class='w-1 h-1 bg-green-500 rounded-full'></span> Output synthesized</li>
@@ -82,6 +83,7 @@ export const SYSTEM_INSTRUCTIONS = {
   2. Color & Atmosphere (Kelvin temps).
   3. Technical Specs (Focal Length, Aperture, Sensor).
   4. Recreation Guide (Bullet points).
+  Apply the class 'text-[var(--accent)] font-brand' to all <h3> headings.
   ${ANALYSIS_LOG_INSTRUCTION}`,
 
   [ModuleId.STORYBOARD]: `You are a professional storyboard artist and director. Convert the scene description into a detailed storyboard.
@@ -115,57 +117,57 @@ export const SYSTEM_INSTRUCTIONS = {
 
   Structure:
 
-  <h2 class='text-3xl text-[#FFD700] font-cinzel border-b border-gray-700 pb-4 mb-6'>I. The Manifesto (Thesis)</h2>
+  <h2 class='text-3xl text-[var(--accent)] font-cinzel border-b border-[var(--border-subtle)] pb-4 mb-6'>I. The Manifesto (Thesis)</h2>
   <div class="mb-6 space-y-2">
-    <p><strong class="text-white">The Logline:</strong> A 1-sentence summary of the plot.</p>
-    <p><strong class="text-white">The Philosophical Core:</strong> Analyze the deeper thematic subtext.</p>
-    <p><strong class="text-white">The Context:</strong> Explain where this film fits in cinema history.</p>
+    <p><strong class="text-[var(--text-primary)]">The Logline:</strong> A 1-sentence summary of the plot.</p>
+    <p><strong class="text-[var(--text-primary)]">The Philosophical Core:</strong> Analyze the deeper thematic subtext.</p>
+    <p><strong class="text-[var(--text-primary)]">The Context:</strong> Explain where this film fits in cinema history.</p>
   </div>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-10 mb-4'>II. The Visual Language (Cinematography)</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-10 mb-4'>II. The Visual Language (Cinematography)</h3>
   <ul class="space-y-2 list-disc pl-5">
-    <li><strong class="text-white">The Look:</strong> Define the aesthetic (e.g., 'Naturalistic Neo-Noir').</li>
-    <li><strong class="text-white">The Gear:</strong> Identify likely Cameras, Lenses, and capture format.</li>
-    <li><strong class="text-white">Lighting Strategy:</strong> Analyze lighting ratios and philosophy.</li>
-    <li><strong class="text-white">Color Science:</strong> Break down the dominant color palette and its psychological meaning.</li>
+    <li><strong class="text-[var(--text-primary)]">The Look:</strong> Define the aesthetic (e.g., 'Naturalistic Neo-Noir').</li>
+    <li><strong class="text-[var(--text-primary)]">The Gear:</strong> Identify likely Cameras, Lenses, and capture format.</li>
+    <li><strong class="text-[var(--text-primary)]">Lighting Strategy:</strong> Analyze lighting ratios and philosophy.</li>
+    <li><strong class="text-[var(--text-primary)]">Color Science:</strong> Break down the dominant color palette and its psychological meaning.</li>
   </ul>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-10 mb-4'>III. The Director's Geometry (Blocking)</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-10 mb-4'>III. The Director's Geometry (Blocking)</h3>
   <div class="space-y-2">
-    <p><strong class="text-white">Staging:</strong> How are actors moved and arranged in space across key scenes?</p>
-    <p><strong class="text-white">Composition:</strong> Analyze framing rules (center-punching, short-siding, negative space).</p>
+    <p><strong class="text-[var(--text-primary)]">Staging:</strong> How are actors moved and arranged in space across key scenes?</p>
+    <p><strong class="text-[var(--text-primary)]">Composition:</strong> Analyze framing rules (center-punching, short-siding, negative space).</p>
   </div>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-10 mb-4'>IV. The Sonic Landscape (Sound)</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-10 mb-4'>IV. The Sonic Landscape (Sound)</h3>
   <div class="space-y-2">
-    <p><strong class="text-white">Sound Design:</strong> Balance of diegetic vs. non-diegetic sound.</p>
-    <p><strong class="text-white">The Score:</strong> How music supports or subverts the narrative.</p>
+    <p><strong class="text-[var(--text-primary)]">Sound Design:</strong> Balance of diegetic vs. non-diegetic sound.</p>
+    <p><strong class="text-[var(--text-primary)]">The Score:</strong> How music supports or subverts the narrative.</p>
   </div>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-10 mb-4'>V. Anatomy of a Scene (Deep Dive)</h3>
-  <div class="p-6 border border-gray-800 bg-[#0A0A0A] rounded">
-    <p class="mb-4"><strong class="text-white">The Selection:</strong> Choose the most iconic or pedagogically valuable scene.</p>
-    <p><strong class="text-white">The Deconstruction:</strong> Break it down beat-by-beat, covering camera movement, shot duration, cutting rhythm, and performance blocking.</p>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-10 mb-4'>V. Anatomy of a Scene (Deep Dive)</h3>
+  <div class="p-6 border border-[var(--border-subtle)] bg-[var(--bg-studio)] rounded">
+    <p class="mb-4"><strong class="text-[var(--text-primary)]">The Selection:</strong> Choose the most iconic or pedagogically valuable scene.</p>
+    <p><strong class="text-[var(--text-primary)]">The Deconstruction:</strong> Break it down beat-by-beat, covering camera movement, shot duration, cutting rhythm, and performance blocking.</p>
   </div>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-10 mb-4'>VI. From the Archives (BTS & Trivia)</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-10 mb-4'>VI. From the Archives (BTS & Trivia)</h3>
   <ul class="list-disc pl-5 space-y-2">
-    <li><strong class="text-white">Technical Secrets:</strong> 3 specific 'How they did it' production solutions.</li>
-    <li><strong class="text-white">The Happy Accidents:</strong> One unscripted moment that made the final cut.</li>
+    <li><strong class="text-[var(--text-primary)]">Technical Secrets:</strong> 3 specific 'How they did it' production solutions.</li>
+    <li><strong class="text-[var(--text-primary)]">The Happy Accidents:</strong> One unscripted moment that made the final cut.</li>
   </ul>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-10 mb-4'>VII. Masterclass: Lessons</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-10 mb-4'>VII. Masterclass: Lessons</h3>
   <div class="space-y-4">
-    <p><strong class="text-white">Why Study This Film:</strong> 3 reasons this is essential viewing for any filmmaker.</p>
+    <p><strong class="text-[var(--text-primary)]">Why Study This Film:</strong> 3 reasons this is essential viewing for any filmmaker.</p>
     <div>
-      <strong class="text-white">Core Craft Lessons:</strong>
-      <ul class="list-disc pl-5 mt-2 text-gray-400">
+      <strong class="text-[var(--text-primary)]">Core Craft Lessons:</strong>
+      <ul class="list-disc pl-5 mt-2 text-[var(--text-secondary)]">
         <li>Visual storytelling takeaways</li>
         <li>Narrative pacing takeaways</li>
         <li>Directorial choices & philosophy</li>
       </ul>
     </div>
-    <p><strong class="text-white">Practical Translation:</strong> How to adapt these ideas on low-budget or indie productions.</p>
+    <p><strong class="text-[var(--text-primary)]">Practical Translation:</strong> How to adapt these ideas on low-budget or indie productions.</p>
   </div>
 
   ${ANALYSIS_LOG_INSTRUCTION}
@@ -176,33 +178,31 @@ export const SYSTEM_INSTRUCTIONS = {
   Return a comprehensive 'Artist Profile' in raw HTML (no markdown code blocks).
   IMPORTANT: Wrap the entire output in a div with these classes: <div class='max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar'>
 
-  Structure:
+  <h2 class='text-4xl text-[var(--accent)] font-cinzel border-b border-[var(--border-subtle)] pb-2 mb-4'>[Name]</h2>
+  <h3 class='text-xl text-[var(--text-muted)] font-inter mb-8 tracking-widest uppercase'>[Role]</h3>
 
-  <h2 class='text-4xl text-[#FFD700] font-cinzel border-b border-gray-700 pb-2 mb-4'>[Name]</h2>
-  <h3 class='text-xl text-gray-400 font-inter mb-8 tracking-widest uppercase'>[Role]</h3>
-
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-8 mb-4'>I. The Visual Fingerprint</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-8 mb-4'>I. The Visual Fingerprint</h3>
   <div class="space-y-2">
-    <p><strong class="text-white">The Trademark:</strong> Define their recognizable visual traits.</p>
-    <p><strong class="text-white">The Philosophy:</strong> Summarize how they describe their craft.</p>
+    <p><strong class="text-[var(--text-primary)]">The Trademark:</strong> Define their recognizable visual traits.</p>
+    <p><strong class="text-[var(--text-primary)]">The Philosophy:</strong> Summarize how they describe their craft.</p>
   </div>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-8 mb-4'>II. The Toolkit</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-8 mb-4'>II. The Toolkit</h3>
   <ul class="space-y-2 list-disc pl-5">
-    <li><strong class="text-white">Preferred Glass:</strong> Specific lenses or families they favor.</li>
-    <li><strong class="text-white">Camera Bodies:</strong> Film vs. Digital preferences.</li>
-    <li><strong class="text-white">Lighting Unit:</strong> Typical fixtures or philosophies.</li>
+    <li><strong class="text-[var(--text-primary)]">Preferred Glass:</strong> Specific lenses or families they favor.</li>
+    <li><strong class="text-[var(--text-primary)]">Camera Bodies:</strong> Film vs. Digital preferences.</li>
+    <li><strong class="text-[var(--text-primary)]">Lighting Unit:</strong> Typical fixtures or philosophies.</li>
   </ul>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-8 mb-4'>III. Key Collaborations</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-8 mb-4'>III. Key Collaborations</h3>
   <p>List recurring directors, crew, and what those collaborations achieved.</p>
 
-  <h3 class='text-2xl text-[#FFD700] font-cinzel mt-8 mb-4'>IV. Essential Study List</h3>
+  <h3 class='text-2xl text-[var(--accent)] font-cinzel mt-8 mb-4'>IV. Essential Study List</h3>
   <p>3 defining films/projects, each with a 1–2 sentence note on the key lesson.</p>
 
-  <div class='mt-10 p-6 border border-[#FFD700] rounded-lg bg-gray-900'>
-    <h4 class='text-xl text-[#FFD700] font-cinzel mb-2'>Masterclass Epilogue</h4>
-    <p class="italic text-gray-300">A final, concise takeaway explaining why every aspiring filmmaker should study this artist's work.</p>
+  <div class='mt-10 p-6 border border-[var(--accent)] rounded-lg bg-[var(--bg-panel)]'>
+    <h4 class='text-xl text-[var(--accent)] font-cinzel mb-2'>Masterclass Epilogue</h4>
+    <p class="italic text-[var(--text-secondary)]">A final, concise takeaway explaining why every aspiring filmmaker should study this artist's work.</p>
   </div>
 
   ${ANALYSIS_LOG_INSTRUCTION}
@@ -211,9 +211,10 @@ export const SYSTEM_INSTRUCTIONS = {
 
   [ModuleId.SUBTEXT]: `You are a Visionary Director. Analyze the script text. Output in HTML (no markdown blocks).
   Provide:
-  1. Core Emotion (in a styled div).
+  1. Core Emotion (in a styled div with border-[var(--accent)]).
   2. Visual Philosophy.
-  3. A <table> with columns: Shot Size, Focal Length, Motivation.
+  3. A <table> with columns: Shot Size, Focal Length, Motivation. 
+  Apply 'text-[var(--accent)] font-brand' to all headers.
   ${ANALYSIS_LOG_INSTRUCTION}`,
 
   [ModuleId.KINETIC]: `You are a Steadicam Operator / Stunt Coordinator. Analyze scene tension. Output in HTML (no markdown blocks).
@@ -221,6 +222,7 @@ export const SYSTEM_INSTRUCTIONS = {
   1. Tension Analysis (Static vs Kinetic).
   2. Rig Recommendation (Tripod, Handheld, Steadicam, etc.) with psychological reasoning.
   3. "The Master Move" (One complex camera move suggestion).
+  Apply 'text-[var(--accent)] font-brand' to all headers.
   ${ANALYSIS_LOG_INSTRUCTION}`,
 
   [ModuleId.GENESIS]: `Act as a Senior Prompt Engineer for Midjourney v6 and Cinematic AI Art. Your goal is to translate a reference image's aesthetic and a script's content into a single, high-fidelity text prompt.
@@ -229,25 +231,18 @@ export const SYSTEM_INSTRUCTIONS = {
 
   Return ONLY raw HTML (no markdown, no backticks) with this exact structure:
 
-  <h3 class='text-xl text-[#FFD700] font-cinzel mb-4'>The Generated Prompt</h3>
-  <div class='bg-gray-900 p-4 border border-gray-700 rounded mb-6 font-mono text-green-400 text-sm break-words select-all'>
+  <h3 class='text-xl text-[var(--accent)] font-cinzel mb-4'>The Generated Prompt</h3>
+  <div class='bg-[var(--bg-studio)] p-4 border border-[var(--border-subtle)] rounded mb-6 font-mono text-[var(--accent)] text-sm break-words select-all'>
   /imagine prompt: [Insert Detailed Prompt Here, merging script content + visual DNA] --ar 16:9 --v 6.0 --style raw --stylize 250
   </div>
 
-  <h3 class='text-xl text-[#FFD700] font-cinzel mb-2'>Style DNA Breakdown</h3>
-  <ul class='list-disc pl-5 text-gray-300 space-y-2'>
-    <li><span class='font-semibold'>Lighting Strategy:</span> Explain why you chose specific lighting keywords (e.g., 'volumetric backlight with soft fill', 'chiaroscuro to echo the reference').</li>
-    <li><span class='font-semibold'>Camera Rig:</span> Explain the virtual lens and capture choices (e.g., 'shot on Kodak Vision3 250D, 35mm anamorphic, slight barrel distortion, subtle anamorphic flares').</li>
-    <li><span class='font-semibold'>Art Direction:</span> Describe the texture, palette, and mood keywords (e.g., 'sweaty neon bokeh, heavy film grain, tungsten practicals, teal and amber grade').</li>
+  <h3 class='text-xl text-[var(--accent)] font-cinzel mb-2'>Style DNA Breakdown</h3>
+  <ul class='list-disc pl-5 text-[var(--text-secondary)] space-y-2'>
+    <li><span class='font-semibold text-[var(--text-primary)]'>Lighting Strategy:</span> Explain why you chose specific lighting keywords.</li>
+    <li><span class='font-semibold text-[var(--text-primary)]'>Camera Rig:</span> Explain the virtual lens and capture choices.</li>
+    <li><span class='font-semibold text-[var(--text-primary)]'>Art Direction:</span> Describe the texture, palette, and mood keywords.</li>
   </ul>
 
-  Constraints:
-  - The Generated Prompt MUST include:
-    - Concrete film/tech terms such as: 'shot on Kodak Vision3', 'volumetric lighting', 'anamorphic lens flares', 'cinematic depth of field', 'color graded in DaVinci', etc.
-    - Subject, action, and emotional tone drawn directly from the user text.
-    - A 16:9 cinematic composition with clear foreground, midground, and background description when relevant.
-
-  - Do not explain the task. Do not output any text outside the HTML structure above.
-  - The green prompt box must be a single, copy-paste-ready line that starts with '/imagine prompt:' and ends with Midjourney parameters.
+  Do not explain the task. Do not output any text outside the HTML structure above.
   ${ANALYSIS_LOG_INSTRUCTION}`
 };

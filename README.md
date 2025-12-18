@@ -1,50 +1,37 @@
 # OBSCURA.AI - Deployment Guide
 
-Welcome to the **OBSCURA.AI** setup guide. Follow these steps to make your application live.
+Welcome to the **OBSCURA.AI** setup guide. Follow these steps to make your application live on Cloudflare Pages.
 
-## PHASE 1: Credentials Setup (Required for Login)
+## PHASE 1: Google Identity Setup (Login)
 
-### Step 1: Get Google Client ID (The Login)
 1. Go to [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a **New Project** (name it "Obscura App").
-3. Navigate to **APIs & Services > OAuth consent screen**.
-   - Select **External**.
-   - Fill in App Name ("Obscura") and email.
-   - Click Save.
-4. Navigate to **APIs & Services > Credentials**.
-   - Click **Create Credentials** > **OAuth client ID**.
-   - Application Type: **Web application**.
-   - **Authorized JavaScript origins**:
-     - Add `http://localhost:5173` (for local testing).
-     - Add your live URL (e.g., `https://obscura-ai.pages.dev`) once you have it.
-   - Click **Create**.
-5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`).
+2. Create a project named "Obscura".
+3. Under **APIs & Services > OAuth consent screen**, set to **External** and provide basic app info.
+4. Under **Credentials > Create Credentials > OAuth client ID**, select **Web application**.
+5. Add your domain (e.g., `https://obscura-ai.pages.dev`) to **Authorized JavaScript origins**.
+6. Copy the **Client ID**.
 
 ---
 
-## PHASE 2: Live Deployment (Cloudflare Pages)
+## PHASE 2: Cloudflare Pages Deployment
 
-### 1. GitHub Setup
-1. Go to [GitHub.com](https://github.com) and create a new repository named `obscura-ai`.
-2. Upload all your project files to this repository.
-
-### 2. Cloudflare Pages Setup
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/) > **Workers & Pages**.
-2. Click **Create Application** > **Connect to Git**.
-3. Select your `obscura-ai` repository.
-4. **Build Settings**:
-   - **Framework Preset**: Vite
+1. **GitHub**: Push this repository to your GitHub account.
+2. **Cloudflare**: Navigate to **Workers & Pages > Create Application > Pages > Connect to Git**.
+3. **Build Settings**:
+   - **Framework Preset**: `Vite`
    - **Build command**: `npm run build`
    - **Output directory**: `dist`
-5. **Environment Variables**:
-   - Add variable `VITE_GOOGLE_CLIENT_ID` = (Paste your Client ID from Phase 1)
-   - **IMPORTANT**: Do NOT add a `VITE_GEMINI_API_KEY` variable if you want users to provide their own keys. If you leave this empty, the app will automatically show the "Gatekeeper" screen to users.
-6. Click **Save and Deploy**.
+4. **Environment Variables**:
+   - `VITE_GOOGLE_CLIENT_ID`: Your Client ID from Phase 1.
+   - `API_KEY`: Your Google Gemini API Key. This will be used as the default key for all users for basic tasks.
+5. **Deploy**: Click "Save and Deploy".
 
-### 3. Final Connection
-1. Once deployed, Cloudflare will give you a URL (e.g., `https://obscura-ai.pages.dev`).
-2. Go back to **Google Cloud Console** > Credentials > Your Client ID.
-3. Add this new URL to **Authorized JavaScript origins**.
-4. Save.
+---
 
-**Success!** Your Cinematic AI Suite is now live.
+## SYSTEM ARCHITECTURE NOTE
+
+OBSCURA.AI uses a hybrid key strategy:
+- **Global Key**: Provided via `API_KEY` env var. Used for general analysis and chat.
+- **User Key**: For the **VISIONARY (Pro Image)** module, users are prompted to select their own key via `window.aistudio.openSelectKey()`. This protects your billing for high-cost tasks.
+
+**Success!** Your Cinematic AI Suite is ready for production.

@@ -8,7 +8,7 @@
     <title>OBSCURA.AI | Studio</title>
     <meta name="title" content="OBSCURA.AI | Cinematic Intelligence Suite">
     <meta name="description" content="AI-powered filmmaking assistant. Generate professional storyboards, reverse-engineer lighting setups, analyze scripts, and create director's treatments.">
-    <meta name="theme-color" content="#161618">
+    <meta name="theme-color" content="#050505">
 
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,85 +17,107 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     
     <style>
       :root {
-        /* Default Dark Mode */
-        --bg-studio: #161618;
-        --bg-panel: #1C1C1E;
-        --bg-element: #2C2C2E;
-        --bg-hover: rgba(255, 255, 255, 0.05);
-        --border-subtle: rgba(255, 255, 255, 0.08);
-        --text-primary: #F2F2F7;
-        --text-secondary: #AEAEB2;
-        --text-muted: #636366;
-        --accent: #FFD700;
-        --shadow-color: rgba(0, 0, 0, 0.3);
+        /* Obsidian Matte (Default Dark) */
+        --bg-studio: #050505;
+        --bg-panel: rgba(255, 255, 255, 0.02);
+        --bg-sidebar: #050505;
+        --bg-card: rgba(255, 255, 255, 0.01);
+        --border-subtle: rgba(255, 255, 255, 0.05);
+        --text-primary: #FFFFFF;
+        --text-secondary: #A1A1AA;
+        --text-muted: #3F3F46;
+        --accent: #F59E0B; /* Amber 500 */
+        --shadow-glow: rgba(245, 158, 11, 0.1);
+        --input-bg: #0c0c0d;
       }
       
       [data-theme="light"] {
-        /* Light Mode - Apple Style */
-        --bg-studio: #F5F5F7;
+        /* Daylight (Apple-esque Studio Light) */
+        --bg-studio: #F4F4F5;
         --bg-panel: #FFFFFF;
-        --bg-element: #E5E5EA;
-        --bg-hover: rgba(0, 0, 0, 0.05);
+        --bg-sidebar: #FFFFFF;
+        --bg-card: #FFFFFF;
         --border-subtle: rgba(0, 0, 0, 0.1);
-        --text-primary: #1D1D1F;
-        --text-secondary: #6e6e73;
-        --text-muted: #86868b;
-        --accent: #007AFF; /* Cinematic Blue for Light Mode */
-        --shadow-color: rgba(0, 0, 0, 0.1);
+        --text-primary: #09090B;
+        --text-secondary: #52525B;
+        --text-muted: #A1A1AA;
+        --accent: #2563EB; /* Blue 600 */
+        --shadow-glow: rgba(37, 99, 235, 0.05);
+        --input-bg: #F8F8F8;
       }
 
       body {
         background-color: var(--bg-studio);
         color: var(--text-primary);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Inter', sans-serif;
         overflow-x: hidden;
         -webkit-font-smoothing: antialiased;
-        transition: background-color 0.3s ease, color 0.3s ease;
+        transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease;
       }
-      
-      h1, h2, h3, h4, h5, h6 {
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        color: var(--text-primary);
+
+      .font-mono {
+        font-family: 'Fira Code', monospace;
       }
       
       .font-brand {
         font-family: 'Cinzel', serif;
       }
-      
-      /* Dynamic Classes */
-      .bg-studio { background-color: var(--bg-studio); }
-      .bg-panel { background-color: var(--bg-panel); }
-      .bg-element { background-color: var(--bg-element); }
-      .border-subtle { border-color: var(--border-subtle); }
-      .text-primary { color: var(--text-primary); }
-      .text-secondary { color: var(--text-secondary); }
-      .text-muted { color: var(--text-muted); }
-      
-      /* Apple-style Scrollbar */
-      ::-webkit-scrollbar { width: 10px; height: 10px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: var(--bg-element); border-radius: 5px; border: 2px solid var(--bg-studio); }
-      ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-      
-      /* Typography Classes for Dynamic Content */
-      .prose h1, .prose h2, .prose h3 { color: var(--text-primary); margin-top: 1.5em; margin-bottom: 0.5em; font-family: 'Inter', sans-serif; }
-      .prose strong { color: var(--text-primary); font-weight: 600; }
-      .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; color: var(--text-secondary); }
-      .prose li { margin-bottom: 0.25em; }
-      .prose p { margin-bottom: 1em; line-height: 1.6; color: var(--text-secondary); }
-      
+
       /* Utilities */
-      .glass-panel {
-        background: var(--bg-panel);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid var(--border-subtle);
+      .film-grain {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 45;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        opacity: 0.04;
+        mix-blend-mode: overlay;
       }
+      
+      [data-theme="light"] .film-grain {
+        opacity: 0.015;
+      }
+
+      .cinematic-vignette {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.9) 100%);
+        pointer-events: none;
+        z-index: 40;
+      }
+
+      [data-theme="light"] .cinematic-vignette {
+        background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.02) 60%, rgba(0,0,0,0.1) 100%);
+      }
+
+      /* Custom Scrollbar */
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { 
+        background: var(--border-subtle); 
+        border-radius: 10px;
+      }
+
+      /* Animations */
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes breathe {
+        0%, 100% { transform: scale(0.95); opacity: 0.05; }
+        50% { transform: scale(1.02); opacity: 0.12; }
+      }
+      @keyframes pulse-status {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.8); }
+      }
+      
+      .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+      .animate-slide-up { animation: slideUp 1s ease-out forwards; }
+      .animate-breathe { animation: breathe 8s ease-in-out infinite; }
+      .animate-pulse-status { animation: pulse-status 2.5s ease-in-out infinite; }
     </style>
 <script type="importmap">
 {

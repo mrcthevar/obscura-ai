@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface TourStep {
@@ -42,7 +43,6 @@ const TourGuide: React.FC = () => {
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('obscura_tour_completed');
     if (!hasSeenTour) {
-      // Small delay to ensure UI renders first
       setTimeout(() => setIsOpen(true), 1000);
     }
   }, []);
@@ -78,7 +78,6 @@ const TourGuide: React.FC = () => {
 
   const step = STEPS[currentStep];
 
-  // Calculate position style for the popup box
   const getPopoverStyle = () => {
     if (!rect || step.position === 'center') {
       return {
@@ -88,15 +87,13 @@ const TourGuide: React.FC = () => {
       };
     }
 
-    // Simple positioning logic
     if (step.position === 'right') {
       return {
-        top: rect.top + (rect.height / 2) - 100, // Vertically center-ish
-        left: rect.right + 20,
+        top: rect.top + (rect.height / 2) - 100,
+        left: rect.right + 24,
       };
     }
     
-    // Fallback or other positions can be added here
     return {
         top: '50%',
         left: '50%',
@@ -105,47 +102,44 @@ const TourGuide: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden">
-      {/* Backdrop with "Hole" logic or simple dimming */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-500"></div>
+    <div className="fixed inset-0 z-[200] overflow-hidden">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500"></div>
 
-      {/* Spotlight highlight (Optional visual flare) */}
       {rect && (
         <div 
-          className="absolute border-2 border-[#FFD700] rounded-xl shadow-[0_0_100px_rgba(255,215,0,0.2)] transition-all duration-500 ease-in-out bg-transparent pointer-events-none"
+          className="absolute border-2 border-[var(--accent)] rounded-[2rem] shadow-[0_0_100px_var(--shadow-glow)] transition-all duration-700 ease-in-out bg-transparent pointer-events-none"
           style={{
-            top: rect.top - 5,
-            left: rect.left - 5,
-            width: rect.width + 10,
-            height: rect.height + 10,
+            top: rect.top - 8,
+            left: rect.left - 8,
+            width: rect.width + 16,
+            height: rect.height + 16,
           }}
         />
       )}
 
-      {/* Content Card */}
       <div 
-        className="absolute w-[320px] bg-[#1C1C1E] border border-white/10 rounded-2xl shadow-2xl p-6 transition-all duration-500 ease-out flex flex-col gap-4 animate-fade-in"
+        className="absolute w-[360px] bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-[2.5rem] shadow-2xl p-10 transition-all duration-500 ease-out flex flex-col gap-6 animate-fade-in"
         style={getPopoverStyle()}
       >
         <div className="flex justify-between items-start">
-            <h3 className="text-lg font-cinzel text-white">{step.title}</h3>
-            <span className="text-[10px] font-mono text-[#636366]">{currentStep + 1} / {STEPS.length}</span>
+            <h3 className="text-2xl font-cinzel text-[var(--text-primary)] leading-tight">{step.title}</h3>
+            <span className="text-[10px] font-mono text-[var(--text-muted)] font-bold">{currentStep + 1} / {STEPS.length}</span>
         </div>
         
-        <p className="text-sm text-[#AEAEB2] font-inter leading-relaxed">
+        <p className="text-sm text-[var(--text-secondary)] font-inter leading-relaxed font-light">
             {step.description}
         </p>
 
-        <div className="flex justify-between items-center mt-2 pt-4 border-t border-white/5">
+        <div className="flex justify-between items-center mt-4 pt-6 border-t border-[var(--border-subtle)]">
             <button 
                 onClick={finishTour}
-                className="text-xs text-[#636366] hover:text-white transition-colors"
+                className="text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors uppercase tracking-widest"
             >
-                Skip Tour
+                Skip
             </button>
             <button 
                 onClick={handleNext}
-                className="bg-white text-black text-xs font-bold px-4 py-2 rounded-lg hover:bg-[#FFD700] transition-colors"
+                className="bg-[var(--accent)] text-black text-xs font-black px-6 py-3 rounded-2xl hover:bg-white transition-all shadow-xl active:scale-95 uppercase tracking-widest"
             >
                 {currentStep === STEPS.length - 1 ? 'Finish' : 'Next →'}
             </button>

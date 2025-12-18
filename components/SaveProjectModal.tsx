@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 interface SaveProjectModalProps {
@@ -20,46 +21,46 @@ const SaveProjectModal: React.FC<SaveProjectModalProps> = ({ onSave, onCancel, i
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in"
       onClick={onCancel}
     >
       <div 
-        className="bg-[#0A0A0A] border border-neutral-700 w-full max-w-md p-8 shadow-[0_0_40px_rgba(255,215,0,0.1)] rounded relative"
+        className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] w-full max-w-lg p-12 shadow-[0_0_80px_var(--shadow-glow)] rounded-[3rem] relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-2xl font-cinzel text-white mb-6 border-b border-neutral-800 pb-4">
-          Save Project to Drive
+        <h3 className="text-3xl font-cinzel text-[var(--text-primary)] mb-8 border-b border-[var(--border-subtle)] pb-6 tracking-tight">
+          Archive Project
         </h3>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
           <div>
-            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">
-              Project Codename
+            <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mb-4 font-mono">
+              Project Identifier
             </label>
             <input
               type="text"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              placeholder="e.g. BLADE RUNNER STUDY"
+              placeholder="e.g. NEO_SEOUL_SCENE_01"
               autoFocus
-              className="w-full bg-[#050505] border border-neutral-700 text-white px-4 py-3 focus:outline-none focus:border-[#FFD700] transition-colors font-mono text-sm"
+              className="w-full bg-[var(--bg-studio)] border border-[var(--border-subtle)] text-[var(--text-primary)] px-6 py-4 rounded-2xl focus:outline-none focus:border-[var(--accent)] transition-all font-mono text-sm shadow-inner"
             />
           </div>
 
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-4 pt-4">
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 px-4 py-3 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600 transition-colors font-inter text-xs tracking-wider"
+              className="flex-1 px-8 py-4 border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] rounded-2xl transition-all font-bold text-[10px] tracking-[0.2em] uppercase"
             >
-              CANCEL
+              ABORT
             </button>
             <button
               type="submit"
               disabled={!projectName.trim()}
-              className="flex-1 px-4 py-3 bg-[#FFD700] text-black font-bold hover:bg-white transition-colors font-inter text-xs tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-8 py-4 bg-[var(--accent)] text-black font-black rounded-2xl hover:bg-white transition-all text-[10px] tracking-[0.2em] uppercase disabled:opacity-20 disabled:cursor-not-allowed shadow-xl active:scale-95"
             >
-              INITIATE SAVE
+              SYNC VAULT
             </button>
           </div>
         </form>

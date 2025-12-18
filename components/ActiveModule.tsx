@@ -3,6 +3,7 @@ import { ModuleDefinition, ModuleId, StoryboardFrame } from '../types';
 import { streamModuleContent, generateSingleFrame } from '../services/geminiService';
 import { generateCinematicImage } from '../services/bananaProService';
 import { ApiKeyContext } from '../contexts/ApiKeyContext';
+import MobileHeader from './MobileHeader';
 
 declare global {
   interface Window {
@@ -16,26 +17,26 @@ interface ActiveModuleProps {
   history: string[];
   onResultGenerated: (result: string) => void;
   onUpdateHistory?: (result: string) => void;
+  onExitModule: () => void;
+  onToggleSidebar: () => void;
 }
 
-const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGenerated, onUpdateHistory }) => {
+const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGenerated, onUpdateHistory, onExitModule, onToggleSidebar }) => {
   const apiKey = useContext(ApiKeyContext);
   const [textInput, setTextInput] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   
-  const [loading, setLoading] = useState(false); // Tracks API active state
-  const [thinkingState, setThinkingState] = useState<'idle' | 'processing' | 'complete'>('idle'); // Tracks UI state
-  const [isFadingOut, setIsFadingOut] = useState(false); // Tracks exit animation
+  const [loading, setLoading] = useState(false);
+  const [thinkingState, setThinkingState] = useState<'idle' | 'processing' | 'complete'>('idle');
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const [storyboardData, setStoryboardData] = useState<StoryboardFrame[]>([]);
   
-  // Thinking Mode State
   const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
 
-  // Editing State
   const [editingFrameIndex, setEditingFrameIndex] = useState<number | null>(null);
   const [editedFrameData, setEditedFrameData] = useState<StoryboardFrame | null>(null);
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
@@ -46,12 +47,10 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const endOfOutputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Scroll to bottom when output changes or loads
     endOfOutputRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [output, storyboardData, thinkingState]);
 
   useEffect(() => {
-    // When switching modules or loading history, set initial state
     if (history.length > 0) {
       processOutput(history[history.length - 1]);
     } else {
@@ -60,41 +59,27 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     }
   }, [module.id, history]);
 
-  // Thinking Mode Simulation
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
-    
     if (thinkingState === 'processing') {
       setIsFadingOut(false);
       setThinkingStepIndex(0);
       interval = setInterval(() => {
-        setThinkingStepIndex(prev => {
-           // Advance steps but stop at the last one while processing
-           if (prev < module.steps.length - 1) return prev + 1;
-           return prev;
-        });
-      }, 1500); // 1.5s per simulated step
+        setThinkingStepIndex(prev => prev < module.steps.length - 1 ? prev + 1 : prev);
+      }, 1500);
     } else if (thinkingState === 'complete') {
-        // Force to last step for 100% visual
         setThinkingStepIndex(module.steps.length - 1);
-        
-        // Vanish after delay
         const timer = setTimeout(() => {
             setIsFadingOut(true);
-            
-            // Allow animation to play before removing from DOM
             setTimeout(() => {
               setThinkingState('idle');
               setIsFadingOut(false);
-            }, 600); // Match CSS transition duration
-            
+            }, 600);
         }, 1500);
         return () => clearTimeout(timer);
     }
-    
     return () => clearInterval(interval);
   }, [thinkingState, module.steps]);
-
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -112,7 +97,6 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         const frames = JSON.parse(result);
         setStoryboardData(Array.isArray(frames) ? frames : []);
       } catch (e) {
-        // If partial JSON or error, usually handled in streaming logic but fallback here
         setOutput(result);
       }
     } else {
@@ -120,38 +104,32 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     }
   };
 
-  const handleExecute = async () => {
-    if (!textInput.trim() && !imageFile) return;
+  const handleExecute = async (manualInput?: string) => {
+    const inputToUse = manualInput || textInput;
+    if (!inputToUse.trim() && !imageFile) return;
     setLoading(true);
     setThinkingState('processing');
     setStoryboardData([]);
-    setOutput(''); // Start fresh
+    setOutput('');
     
-    // For Storyboard, we buffer the output because incomplete JSON is invalid.
-    // For others, we stream directly to `output`
     let buffer = '';
-
     try {
       const result = await streamModuleContent(
         module.id, 
-        textInput, 
+        inputToUse, 
         imageFile,
         (chunk) => {
             buffer += chunk;
-            // Only update live output for text modules
-            if (module.id !== ModuleId.STORYBOARD) {
-                setOutput(buffer);
-            }
+            if (module.id !== ModuleId.STORYBOARD) setOutput(buffer);
         }
       );
-      
       onResultGenerated(result);
       processOutput(result);
-      setTextInput(''); // Clear input on success
+      setTextInput('');
       setImageFile(null);
       setImagePreview(null);
     } catch (err: any) {
-      setOutput(`<div class="text-red-400">Error: ${err.message}</div>`);
+      setOutput(`<div class="text-red-500 font-mono text-xs uppercase tracking-widest border border-red-500/20 p-4 rounded-xl bg-red-500/5">Error: ${err.message}</div>`);
     } finally {
       setLoading(false);
       setThinkingState('complete');
@@ -165,9 +143,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     }
   };
 
-  // --- Storyboard Logic ---
   const handleEditFrame = (index: number) => {
-    setEditingFrameIndex(index);
     setEditingFrameIndex(index);
     setEditedFrameData({ ...storyboardData[index] });
   };
@@ -195,7 +171,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         setStoryboardData(newData);
         if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
       }
-    } catch (e) { alert("Failed to regenerate."); } 
+    } catch (e) { alert("Redraw failed."); } 
     finally { setRegeneratingIndex(null); }
   };
 
@@ -209,11 +185,10 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       newData[index] = { ...frame, generatedImage: base64Image };
       setStoryboardData(newData);
       if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
-    } catch (e) { alert("Image gen failed."); }
+    } catch (e) { alert("Gen failed."); }
     finally { setGeneratingImageIndex(null); }
   };
 
-  // --- Exports ---
   const handleExportPDF = async () => {
     if (!storyboardRef.current || !window.jspdf) return;
     setExporting(true);
@@ -225,148 +200,133 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
          if (i > 0) doc.addPage();
          const canvas = await window.html2canvas(els[i] as HTMLElement, { scale: 2, backgroundColor: '#ffffff' });
          const imgData = canvas.toDataURL('image/jpeg', 0.9);
-         doc.addImage(imgData, 'JPEG', 10, 10, 190, 0); // approx A4 width fit
+         doc.addImage(imgData, 'JPEG', 10, 10, 190, 0);
        }
-       doc.save('OBSCURA_Storyboard.pdf');
+       doc.save(`OBSCURA_${module.id}_Story.pdf`);
     } catch(e) { console.error(e); }
     finally { setExporting(false); }
   };
 
-  // --- Renderers ---
   const renderContent = () => {
     if (!output && !storyboardData.length && thinkingState === 'idle') {
        return (
-         <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] opacity-50 pb-20">
-            <svg className="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d={module.icon} /></svg>
-            <p className="text-sm">Enter a prompt to begin</p>
+         <div className="absolute inset-0 flex flex-col items-center justify-center animate-fade-in p-10 pointer-events-none">
+            {/* Massive Breathing Watermark */}
+            <div className="text-[var(--text-primary)] animate-breathe mb-12 transform scale-[4]">
+               <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={0.5} d={module.icon} /></svg>
+            </div>
+            
+            <div className="text-center space-y-4 max-w-md">
+               <h3 className="text-3xl font-bold tracking-tight">{module.title}</h3>
+               <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-light">{module.description}</p>
+            </div>
          </div>
        );
     }
 
     return (
-      <div className="max-w-4xl mx-auto w-full pb-32 pt-8">
-        
-        {/* Thinking Indicator */}
+      <div className="max-w-5xl mx-auto w-full pb-72 pt-16 px-8">
         {thinkingState !== 'idle' && (
-           <div className={`mb-8 bg-[#0A0A0A] border border-[var(--border-subtle)] rounded-lg p-4 flex items-center gap-4 shadow-lg transition-all duration-500 transform ${isFadingOut ? 'opacity-0 -translate-y-4 max-h-0 mb-0 py-0 overflow-hidden' : 'opacity-100 max-h-32'}`}>
-              <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+           <div className={`mb-16 bg-[var(--bg-panel)] border border-[var(--border-subtle)] backdrop-blur-xl rounded-[2.5rem] p-8 flex items-center gap-8 shadow-2xl transition-all duration-1000 transform ${isFadingOut ? 'opacity-0 -translate-y-12 scale-95 overflow-hidden' : 'opacity-100'}`}>
+              <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
                  {thinkingState === 'complete' ? (
                    <div className="text-[var(--accent)] animate-scale-in">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                    </div>
                  ) : (
                    <>
-                     <div className="absolute inset-0 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
-                     <div className="text-[10px] font-bold text-[var(--accent)]">{Math.round((thinkingStepIndex + 1) / module.steps.length * 100)}%</div>
+                     <div className="absolute inset-0 border-[3px] border-[var(--accent)]/10 rounded-full"></div>
+                     <div className="absolute inset-0 border-[3px] border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+                     <div className="text-[9px] font-black text-[var(--accent)] font-mono tracking-tighter">{Math.round((thinkingStepIndex + 1) / module.steps.length * 100)}%</div>
                    </>
                  )}
               </div>
-              <div className="flex-1 min-w-0">
-                 <h4 className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-1">
-                    {thinkingState === 'complete' ? 'Protocol Executed' : 'Processing Protocol'}
+              <div className="flex-1 min-w-0 text-left">
+                 <h4 className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] mb-1.5 font-mono select-none">
+                    {thinkingState === 'complete' ? 'Synthesis Converged' : 'Neural Processing'}
                  </h4>
-                 <div className="flex items-center gap-2">
-                   <span className="text-sm text-[var(--text-primary)] font-mono truncate">
-                      {thinkingState === 'complete' ? 'Analysis Complete' : `${module.steps[thinkingStepIndex]}...`}
+                 <div className="flex items-center gap-4">
+                   <span className="text-xl font-bold truncate tracking-tight">
+                      {thinkingState === 'complete' ? 'Success' : `${module.steps[thinkingStepIndex]}`}
                    </span>
-                   {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)]">_</span>}
+                   {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)] font-mono text-xl">_</span>}
                  </div>
-              </div>
-              {/* Progress Steps Visualizer */}
-              <div className="hidden md:flex gap-1 shrink-0">
-                 {module.steps.map((step, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`h-1 w-6 rounded-full transition-colors duration-300 ${
-                          thinkingState === 'complete' || idx <= thinkingStepIndex 
-                          ? 'bg-[var(--accent)]' 
-                          : 'bg-[var(--bg-element)]'
-                      }`}
-                    />
-                 ))}
               </div>
            </div>
         )}
 
-        {/* Text Output */}
         {output && module.id !== ModuleId.STORYBOARD && (
-          <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl p-8 shadow-sm animate-slide-up">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[3rem] p-12 shadow-sm animate-slide-up backdrop-blur-[2px]">
              <div 
-               className="prose prose-invert max-w-none text-[var(--text-secondary)] font-inter text-sm leading-7"
+               className="prose prose-invert max-w-none text-[var(--text-secondary)] font-inter text-sm leading-[1.8] marker:text-[var(--accent)]"
                dangerouslySetInnerHTML={{ __html: output }}
              />
           </div>
         )}
 
-        {/* Storyboard Output */}
         {storyboardData.length > 0 && (
-          <div ref={storyboardRef} className="space-y-8 animate-slide-up">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-[var(--text-primary)]">Storyboard Sequence</h3>
-                <button onClick={handleExportPDF} disabled={exporting} className="text-xs bg-[var(--text-primary)] text-[var(--bg-panel)] px-3 py-1.5 rounded-md font-medium hover:opacity-80 transition-opacity">
-                  {exporting ? 'Exporting...' : 'Export PDF'}
+          <div ref={storyboardRef} className="space-y-16 animate-slide-up">
+             <div className="flex justify-between items-end border-b border-[var(--border-subtle)] pb-8">
+                <div>
+                  <h3 className="text-4xl font-bold tracking-tighter">Visual Archive</h3>
+                  <p className="text-[var(--text-muted)] text-sm mt-2 font-light tracking-wide">Analysis Log // Sequence 01</p>
+                </div>
+                <button onClick={handleExportPDF} disabled={exporting} className="bg-[var(--text-primary)] text-[var(--bg-studio)] px-8 py-3 rounded-[1.25rem] text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95 shadow-xl">
+                  {exporting ? 'Processing' : 'Export Dossier'}
                 </button>
              </div>
              
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                {storyboardData.map((frame, idx) => {
                  const isEditing = editingFrameIndex === idx;
                  const data = isEditing ? editedFrameData! : frame;
                  const isBusy = regeneratingIndex === idx || generatingImageIndex === idx;
 
                  return (
-                   <div key={idx} className="storyboard-frame bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-xl overflow-hidden shadow-sm hover:border-[var(--text-secondary)] transition-all group">
-                      
-                      {/* Visual */}
+                   <div key={idx} className="storyboard-frame bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[2.5rem] overflow-hidden group hover:border-[var(--accent)]/30 transition-all duration-700">
                       <div className="aspect-video bg-white relative flex items-center justify-center overflow-hidden">
                          {isBusy && (
-                           <div className="absolute inset-0 bg-white/90 z-20 flex items-center justify-center">
-                              <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                           <div className="absolute inset-0 bg-white/95 z-20 flex items-center justify-center">
+                              <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
                            </div>
                          )}
-                         
                          {data.generatedImage ? (
                            <img src={data.generatedImage} alt="" className="w-full h-full object-cover" />
                          ) : (
-                           <div className="p-4 w-full h-full" dangerouslySetInnerHTML={{ __html: data.svg }} />
+                           <div className="p-12 w-full h-full opacity-90 scale-105 group-hover:scale-100 transition-transform duration-1000" dangerouslySetInnerHTML={{ __html: data.svg }} />
                          )}
-
-                         {/* Overlay Controls */}
-                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="absolute top-6 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-all translate-y-3 group-hover:translate-y-0">
                             {!data.generatedImage && (
-                              <button onClick={() => handleGenerateRealImage(idx)} className="bg-black/70 text-white p-1.5 rounded-md hover:bg-black" title="Render AI Image">
-                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                              <button onClick={() => handleGenerateRealImage(idx)} className="bg-black text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-[var(--accent)] hover:text-black transition-all shadow-2xl">
+                                 Render High-Fi
                               </button>
                             )}
                          </div>
                       </div>
 
-                      {/* Details */}
-                      <div className="p-4 text-sm">
+                      <div className="p-10 text-sm">
                          {isEditing ? (
-                           <div className="space-y-2">
-                             <textarea 
-                               className="w-full bg-[var(--bg-element)] text-[var(--text-primary)] p-2 rounded text-xs border border-[var(--border-subtle)] outline-none" 
-                               rows={3} 
-                               value={data.description} 
-                               onChange={e => setEditedFrameData({...data, description: e.target.value})}
-                             />
-                             <div className="flex gap-2 text-xs">
-                               <button onClick={() => handleRegenerateFrame(idx)} className="flex-1 bg-[var(--bg-element)] py-1 rounded text-[var(--text-primary)]">Redraw</button>
-                               <button onClick={handleSaveEdit} className="flex-1 bg-[var(--text-primary)] text-[var(--bg-panel)] py-1 rounded">Save</button>
+                           <div className="space-y-6">
+                             <textarea className="w-full bg-[var(--bg-studio)] text-[var(--text-primary)] p-5 rounded-3xl text-xs border border-[var(--border-subtle)] outline-none focus:border-[var(--accent)]/50 transition-colors font-mono" rows={3} value={data.description} onChange={e => setEditedFrameData({...data, description: e.target.value})} />
+                             <div className="flex gap-3">
+                               <button onClick={() => handleRegenerateFrame(idx)} className="flex-1 bg-[var(--border-subtle)] py-3 rounded-2xl text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Redraw</button>
+                               <button onClick={handleSaveEdit} className="flex-1 bg-[var(--accent)] text-black py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em]">Commit</button>
                              </div>
                            </div>
                          ) : (
-                           <>
-                             <div className="flex justify-between items-start mb-2">
-                               <span className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wide">Shot {idx+1} • {data.shotType}</span>
-                               <button onClick={() => handleEditFrame(idx)} className="text-[var(--accent)] text-xs hover:underline">Edit</button>
+                           <div className="space-y-6">
+                             <div className="flex justify-between items-center text-left">
+                               <span className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] font-mono select-none">F0{idx+1} // {data.shotType}</span>
+                               <button onClick={() => handleEditFrame(idx)} className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors bg-[var(--border-subtle)] p-2 rounded-lg">
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                               </button>
                              </div>
-                             <p className="text-[var(--text-primary)] leading-snug">{data.description}</p>
-                             <div className="mt-3 text-[10px] text-[var(--text-muted)] font-mono">
-                               {data.focalLength} | {data.cameraMovement}
+                             <p className="text-[var(--text-primary)] text-left font-medium leading-relaxed line-clamp-3 text-base">{data.description}</p>
+                             <div className="pt-6 border-t border-[var(--border-subtle)] flex gap-6 text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-[0.1em] select-none">
+                               <span className="bg-[var(--border-subtle)] px-2 py-1 rounded">{data.focalLength}</span>
+                               <span className="bg-[var(--border-subtle)] px-2 py-1 rounded">{data.cameraMovement}</span>
                              </div>
-                           </>
+                           </div>
                          )}
                       </div>
                    </div>
@@ -375,89 +335,70 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
              </div>
           </div>
         )}
-        
         <div ref={endOfOutputRef} />
       </div>
     );
   };
 
-  // --- Input Command Bar ---
   return (
     <div className="flex flex-col h-full relative">
-      
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 custom-scrollbar">
+      <MobileHeader 
+        title={module.title} 
+        onBack={onExitModule} 
+        onOpenSettings={onToggleSidebar}
+      />
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar pt-20 md:pt-0">
         {renderContent()}
       </div>
 
-      {/* Floating Command Bar */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 bg-gradient-to-t from-[var(--bg-studio)] via-[var(--bg-studio)] to-transparent">
-        <div className="max-w-3xl mx-auto relative group">
-           
-           {/* Image Preview Tag */}
+      {/* Monolith Floating Input Console */}
+      <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
+        <div className="max-w-3xl mx-auto pointer-events-auto">
            {imagePreview && (
-             <div className="absolute bottom-full left-0 mb-2 bg-[var(--bg-element)] border border-[var(--border-subtle)] rounded-lg p-2 flex items-center gap-2">
-               <img src={imagePreview} className="w-8 h-8 rounded object-cover" />
-               <button onClick={() => {setImageFile(null); setImagePreview(null);}} className="text-[var(--text-primary)] hover:text-red-400">✕</button>
+             <div className="mb-6 bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-[2rem] p-3 w-fit flex items-center gap-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-slide-up border-b-[var(--accent)]/50">
+               <img src={imagePreview} className="w-12 h-12 rounded-xl object-cover" />
+               <button onClick={() => {setImageFile(null); setImagePreview(null);}} className="text-[var(--text-muted)] hover:text-red-500 pr-3 transition-colors">✕</button>
              </div>
            )}
 
-           <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-2xl shadow-xl p-1 focus-within:ring-1 focus-within:ring-[var(--border-subtle)] transition-all">
-             
-             {/* Description Text */}
-             <div className="px-4 pt-2 text-[10px] text-[var(--text-muted)] opacity-50 font-medium tracking-wide">
-               {module.description}
-             </div>
+           <div className="bg-[var(--bg-panel)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.5)] flex items-end p-2.5 transition-all duration-500 focus-within:border-[var(--accent)]/50 focus-within:shadow-[0_0_25px_var(--shadow-glow)]">
+              {module.requiresImage && (
+                <button onClick={() => fileInputRef.current?.click()} className="p-5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all duration-300" title="Attach Visual Context">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </button>
+              )}
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
 
-             <div className="flex items-end p-1">
-                 {/* Upload Button */}
-                 {module.requiresImage && (
-                   <button 
-                     onClick={() => fileInputRef.current?.click()}
-                     className="p-3 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                     title="Upload Image"
-                   >
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                   </button>
-                 )}
-                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
-
-                 {/* Text Area */}
+              <div className="flex-1 relative">
+                 <span className="absolute left-5 top-5 text-[var(--accent)] font-mono text-base pointer-events-none select-none">&gt;_</span>
                  <textarea 
                    value={textInput}
                    onChange={(e) => setTextInput(e.target.value)}
                    onKeyDown={handleKeyDown}
-                   placeholder={module.requiresText ? `Ask ${module.title}...` : "Describe your vision..."}
-                   className="flex-1 bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] text-sm p-3 outline-none resize-none max-h-32 min-h-[44px]"
+                   placeholder={`Ask ${module.title.toUpperCase()}...`}
+                   className="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] text-sm py-5 pl-12 pr-6 outline-none resize-none max-h-48 min-h-[64px] font-mono leading-relaxed"
                    rows={1}
-                   style={{ height: 'auto', minHeight: '44px' }}
+                   style={{ height: 'auto', minHeight: '64px' }}
                  />
+              </div>
 
-                 {/* Send Button */}
-                 <button 
-                   onClick={handleExecute}
-                   disabled={loading || (!textInput.trim() && !imageFile)}
-                   className={`p-2 m-1 rounded-xl transition-all ${
-                      textInput.trim() || imageFile 
-                        ? 'bg-[var(--text-primary)] text-[var(--bg-panel)] hover:opacity-90' 
-                        : 'bg-[var(--bg-element)] text-[var(--text-muted)] cursor-not-allowed'
-                   }`}
-                 >
-                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
-                   </svg>
-                 </button>
-             </div>
-           </div>
-           
-           <div className="text-center mt-2">
-             <p className="text-[10px] text-[var(--text-muted)]">
-               {module.id === ModuleId.STORYBOARD ? "AI generates 4-6 frames. Results may vary." : "AI can make mistakes. Verify important info."}
-             </p>
+              <button 
+                onClick={() => handleExecute()}
+                disabled={loading || (!textInput.trim() && !imageFile)}
+                className={`p-5 m-1 rounded-[1.75rem] transition-all duration-500 shadow-2xl ${
+                   textInput.trim() || imageFile 
+                     ? 'bg-[var(--accent)] text-black hover:bg-white active:scale-95 shadow-[var(--accent)]/20' 
+                     : 'bg-[var(--bg-studio)] text-[var(--text-muted)] cursor-not-allowed opacity-30'
+                }`}
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
            </div>
         </div>
       </div>
-
     </div>
   );
 };
