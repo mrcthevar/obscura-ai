@@ -13,7 +13,8 @@ import App from './App';
   if (!win.process) win.process = { env: {} };
   if (!win.process.env) win.process.env = {};
   
-  // Bridge Vite environment variables to the global process object
+  // Bridge Vite environment variables to the global process object.
+  // Vite uses import.meta.env, but the Gemini SDK requires process.env.
   const viteApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
   const viteClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
   
@@ -24,6 +25,9 @@ import App from './App';
   if (!win.process.env.VITE_GOOGLE_CLIENT_ID) {
     win.process.env.VITE_GOOGLE_CLIENT_ID = viteClientId || '';
   }
+  
+  // Also expose to the global scope for the compiler-friendly 'process' variable
+  (win as any).process = win.process;
 })();
 
 const rootElement = document.getElementById('root');

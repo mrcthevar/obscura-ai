@@ -64,10 +64,24 @@ export interface DriveFile {
 
 declare global {
   /**
-   * We remove the explicit global 'process' variable declaration here to resolve 
-   * "Cannot redeclare block-scoped variable 'process'" errors occurring in 
-   * environments where 'process' is already defined (e.g. by Vite or Node types).
+   * GLOBAL PROCESS DECLARATION
+   * Using NodeJS namespace augmentation to define process.env properties.
+   * This avoids "Cannot redeclare block-scoped variable 'process'" errors
+   * when process is already defined by the environment or other type definitions.
    */
+  namespace NodeJS {
+    interface ProcessEnv {
+      [key: string]: string | undefined;
+      API_KEY?: string;
+      VITE_GOOGLE_CLIENT_ID?: string;
+    }
+    interface Process {
+      env: ProcessEnv;
+    }
+  }
+
+  // The global 'process' variable should be picked up from the environment.
+  // We use augmentation instead of a new 'var process' to avoid block-scope conflicts.
 
   interface AIStudio {
     hasSelectedApiKey: () => Promise<boolean>;

@@ -1,4 +1,4 @@
-// TypeScript configuration for OBSCURA.AI
+
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -14,6 +14,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+
+    /* Types */
+    "types": ["node", "vite/client"],
 
     /* Linting */
     "strict": true,
