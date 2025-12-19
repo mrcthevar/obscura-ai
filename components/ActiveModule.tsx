@@ -83,14 +83,55 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     return () => clearInterval(interval);
   }, [thinkingState, module.steps]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+  // Determine if this module supports file uploads (Image OR Script)
+  const isScriptModule = module.id === ModuleId.STORYBOARD || module.id === ModuleId.SUBTEXT;
+  const canUpload = module.requiresImage || isScriptModule;
+  const uploadAccept = module.requiresImage ? "image/*" : ".txt,.md,.fountain,.json";
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setErrorToast(null);
+
+    if (module.requiresImage) {
+        // Image Mode
+        if (!file.type.startsWith('image/')) {
+             setErrorToast("This module requires an image file.");
+             return;
+        }
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result as string);
+        reader.readAsDataURL(file);
+    } else {
+        // Text/Script Mode
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+             setErrorToast("PDF parsing is currently experimental. Please convert to .txt or .md for best results.");
+             return;
+        }
+
+        const validExtensions = ['.txt', '.md', '.fountain', '.json'];
+        const isTextType = file.type.startsWith('text/') || validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (!isTextType) {
+             setErrorToast("Unsupported format. Please upload .txt, .md, or .fountain.");
+             return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result as string;
+            // Inject content directly into the input field
+            setTextInput(content); 
+            setErrorToast("Script successfully loaded.");
+        };
+        reader.onerror = () => setErrorToast("Failed to read file.");
+        reader.readAsText(file);
     }
+
+    // Reset input so the same file can be selected again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const processOutput = (result: string) => {
@@ -99,7 +140,6 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         const frames = JSON.parse(result);
         setStoryboardData(Array.isArray(frames) ? frames : []);
       } catch (e) {
-        // If JSON fails to parse (e.g. timeout returned partial), keep raw text or handle error
         if (result.trim().startsWith('[')) {
              setErrorToast("Partial storyboard data received. Try simpler input.");
         }
@@ -154,7 +194,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       clearTimeout(timeoutId);
       onResultGenerated(result);
       processOutput(result);
-      setTextInput(''); // Only clear if success
+      setTextInput(''); // Only clear input on success
       setImageFile(null);
       setImagePreview(null);
       setThinkingState('complete');
@@ -165,7 +205,6 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       } else {
          setErrorToast(err.message || "Neural uplink failure.");
       }
-      // If we have partial buffer, show it
       if (buffer && module.id !== ModuleId.STORYBOARD) setOutput(buffer);
       setThinkingState('idle');
     } finally {
@@ -189,12 +228,11 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
 
   const handleCopy = () => {
     if (!output) return;
-    // Strip HTML for clipboard but keep logic simple
     const tmp = document.createElement("DIV");
     tmp.innerHTML = output;
     const cleanText = tmp.textContent || tmp.innerText || "";
     navigator.clipboard.writeText(cleanText).then(() => {
-      // Could show a mini-toast here if needed
+       // Optional: show copy success toast
     });
   };
 
@@ -414,21 +452,14 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   };
 
   return (
-    <div className="flex flex-col h-full relative">
-      <MobileHeader 
-        title={module.title} 
-        onBack={onExitModule} 
-        onOpenSettings={onToggleSidebar}
-      />
+    <div className="relative min-h-screen">
+       <MobileHeader title={module.title} onBack={onExitModule} onOpenSettings={onToggleSidebar} />
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pt-20 md:pt-0">
-        {renderContent()}
-      </div>
+       {renderContent()}
 
-      {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
+       {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
 
-      {/* Monolith Floating Input Console */}
-      <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
+       <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
            {imagePreview && (
              <div className="mb-6 bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-[2rem] p-3 w-fit flex items-center gap-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-slide-up border-b-[var(--accent)]/50">
@@ -438,12 +469,22 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
            )}
 
            <div className="bg-[var(--bg-panel)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.5)] flex items-end p-2.5 transition-all duration-500 focus-within:border-[var(--accent)]/50 focus-within:shadow-[0_0_25px_var(--shadow-glow)]">
-              {module.requiresImage && (
-                <button onClick={() => fileInputRef.current?.click()} className="p-5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all duration-300" title="Attach Visual Context" aria-label="Upload Image">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              {canUpload && (
+                <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  className="p-5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all duration-300" 
+                  title={module.requiresImage ? "Attach Visual Context" : "Upload Script (.txt, .md, .fountain)"}
+                  aria-label={module.requiresImage ? "Upload Image" : "Upload Script"}
+                >
+                  {module.requiresImage ? (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  ) : (
+                    /* Paperclip Icon for Script Attachments */
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                  )}
                 </button>
               )}
-              <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept={uploadAccept} />
 
               <div className="flex-1 relative">
                  <span className="absolute left-5 top-5 text-[var(--accent)] font-mono text-base pointer-events-none select-none">&gt;_</span>
@@ -470,7 +511,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                 aria-label={loading ? 'Processing' : 'Initialize Agent'}
               >
                 {loading ? (
-                    <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                    <span className="block w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
                 ) : (
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
