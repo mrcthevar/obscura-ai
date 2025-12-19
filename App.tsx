@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Component } from 'react';
+import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Component } from 'react';
 import { AppState, UserProfile } from './types';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
@@ -7,7 +7,7 @@ import FlashlightCursor from './components/FlashlightCursor';
 import { ApiKeyContext } from './contexts/ApiKeyContext';
 
 interface ErrorBoundaryProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -17,13 +17,16 @@ interface ErrorBoundaryState {
 
 // Error Boundary to prevent "Black Screen of Death"
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = { hasError: false, error: null };
+  public state: ErrorBoundaryState = {
+    hasError: false,
+    error: null
+  };
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: any, errorInfo: ErrorInfo) {
     console.error("Critical System Failure:", error, errorInfo);
   }
 

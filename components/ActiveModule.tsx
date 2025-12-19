@@ -5,6 +5,7 @@ import { streamModuleContent, generateSingleFrame } from '../services/geminiServ
 import { generateCinematicImage } from '../services/bananaProService';
 import { ApiKeyContext } from '../contexts/ApiKeyContext';
 import MobileHeader from './MobileHeader';
+import Toast from './Toast';
 
 interface ActiveModuleProps {
   module: ModuleDefinition;
@@ -24,6 +25,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const [loading, setLoading] = useState(false);
   const [thinkingState, setThinkingState] = useState<'idle' | 'processing' | 'complete'>('idle');
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0); // Progress timer
 
   const [exporting, setExporting] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
@@ -36,9 +38,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
   const [generatingImageIndex, setGeneratingImageIndex] = useState<number | null>(null);
 
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyboardRef = useRef<HTMLDivElement>(null);
   const endOfOutputRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     endOfOutputRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,9 +63,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     if (thinkingState === 'processing') {
       setIsFadingOut(false);
       setThinkingStepIndex(0);
+      setTimeLeft(45); // Start 45s countdown
+      
       interval = setInterval(() => {
         setThinkingStepIndex(prev => prev < module.steps.length - 1 ? prev + 1 : prev);
-      }, 1500);
+        setTimeLeft(prev => Math.max(0, prev - 1));
+      }, 1000); // Update every second
     } else if (thinkingState === 'complete') {
         setThinkingStepIndex(module.steps.length - 1);
         const timer = setTimeout(() => {
@@ -91,6 +99,10 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         const frames = JSON.parse(result);
         setStoryboardData(Array.isArray(frames) ? frames : []);
       } catch (e) {
+        // If JSON fails to parse (e.g. timeout returned partial), keep raw text or handle error
+        if (result.trim().startsWith('[')) {
+             setErrorToast("Partial storyboard data received. Try simpler input.");
+        }
         setOutput(result);
       }
     } else {
@@ -101,11 +113,31 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const handleExecute = async (manualInput?: string) => {
     const inputToUse = manualInput || textInput;
     if (!inputToUse.trim() && !imageFile) return;
+
+    // Cancel previous request if active
+    if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setThinkingState('processing');
     setStoryboardData([]);
     setOutput('');
+    setErrorToast(null);
     
+    // Safety Timeout (Client-side)
+    const timeoutId = setTimeout(() => {
+        if (abortControllerRef.current === controller) {
+            controller.abort();
+            setErrorToast("Connection timed out (45s). Network latency high.");
+            setLoading(false);
+            setThinkingState('idle');
+        }
+    }, 45000); // 45 Seconds Max
+
     let buffer = '';
     try {
       const result = await streamModuleContent(
@@ -115,18 +147,36 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         (chunk) => {
             buffer += chunk;
             if (module.id !== ModuleId.STORYBOARD) setOutput(buffer);
-        }
+        },
+        controller.signal
       );
+      
+      clearTimeout(timeoutId);
       onResultGenerated(result);
       processOutput(result);
       setTextInput('');
       setImageFile(null);
       setImagePreview(null);
+      setThinkingState('complete');
     } catch (err: any) {
-      setOutput(`<div class="text-red-500 font-mono text-xs uppercase tracking-widest border border-red-500/20 p-4 rounded-xl bg-red-500/5">Error: ${err.message}</div>`);
+      clearTimeout(timeoutId);
+      if (err.message === "Request timed out by operator.") {
+         setErrorToast("Operation cancelled.");
+      } else {
+         setErrorToast(err.message || "Neural uplink failure.");
+      }
+      // If we have partial buffer, show it
+      if (buffer && module.id !== ModuleId.STORYBOARD) setOutput(buffer);
+      setThinkingState('idle');
     } finally {
       setLoading(false);
-      setThinkingState('complete');
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
     }
   };
 
@@ -165,7 +215,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         setStoryboardData(newData);
         if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
       }
-    } catch (e) { alert("Redraw failed."); } 
+    } catch (e) { setErrorToast("Redraw failed. Try again."); } 
     finally { setRegeneratingIndex(null); }
   };
 
@@ -179,7 +229,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       newData[index] = { ...frame, generatedImage: base64Image };
       setStoryboardData(newData);
       if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
-    } catch (e) { alert("Gen failed."); }
+    } catch (e) { setErrorToast("Gen failed."); }
     finally { setGeneratingImageIndex(null); }
   };
 
@@ -197,7 +247,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
          doc.addImage(imgData, 'JPEG', 10, 10, 190, 0);
        }
        doc.save(`OBSCURA_${module.id}_Story.pdf`);
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error(e); setErrorToast("Export failed."); }
     finally { setExporting(false); }
   };
 
@@ -205,7 +255,6 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     if (!output && !storyboardData.length && thinkingState === 'idle') {
        return (
          <div className="absolute inset-0 flex flex-col items-center justify-center animate-fade-in p-10 pointer-events-none">
-            {/* Massive Breathing Watermark */}
             <div className="text-[var(--text-primary)] animate-breathe mb-12 transform scale-[4]">
                <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={0.5} d={module.icon} /></svg>
             </div>
@@ -231,7 +280,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                    <>
                      <div className="absolute inset-0 border-[3px] border-[var(--accent)]/10 rounded-full"></div>
                      <div className="absolute inset-0 border-[3px] border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
-                     <div className="text-[9px] font-black text-[var(--accent)] font-mono tracking-tighter">{Math.round((thinkingStepIndex + 1) / module.steps.length * 100)}%</div>
+                     <div className="text-[9px] font-black text-[var(--accent)] font-mono tracking-tighter">{timeLeft}s</div>
                    </>
                  )}
               </div>
@@ -239,11 +288,22 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                  <h4 className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] mb-1.5 font-mono select-none">
                     {thinkingState === 'complete' ? 'Synthesis Converged' : 'Neural Processing'}
                  </h4>
-                 <div className="flex items-center gap-4">
-                   <span className="text-xl font-bold truncate tracking-tight">
-                      {thinkingState === 'complete' ? 'Success' : `${module.steps[thinkingStepIndex]}`}
-                   </span>
-                   {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)] font-mono text-xl">_</span>}
+                 <div className="flex items-center justify-between gap-4">
+                   <div className="flex items-center gap-2">
+                     <span className="text-xl font-bold truncate tracking-tight">
+                        {thinkingState === 'complete' ? 'Success' : `${module.steps[thinkingStepIndex]}`}
+                     </span>
+                     {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)] font-mono text-xl">_</span>}
+                   </div>
+                   
+                   {thinkingState === 'processing' && (
+                     <button 
+                       onClick={handleCancel}
+                       className="px-4 py-2 border border-red-500/30 bg-red-500/10 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
+                     >
+                       Abort
+                     </button>
+                   )}
                  </div>
               </div>
            </div>
@@ -346,6 +406,8 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         {renderContent()}
       </div>
 
+      {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
+
       {/* Monolith Floating Input Console */}
       <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
@@ -386,9 +448,13 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                      : 'bg-[var(--bg-studio)] text-[var(--text-muted)] cursor-not-allowed opacity-30'
                 }`}
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                {loading ? (
+                    <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                ) : (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                )}
               </button>
            </div>
         </div>

@@ -31,8 +31,11 @@ const waitForGoogleScript = async (): Promise<boolean> => {
 
 export const initDriveAuth = async (callback: (token: string) => void) => {
   const currentClientId = getClientId();
+  console.log("Vault Init: Client ID loaded:", currentClientId ? `${currentClientId.slice(0, 15)}...` : "MISSING");
+
   if (!currentClientId) {
     console.warn("Vault Sync Unavailable: Missing VITE_GOOGLE_CLIENT_ID");
+    alert("Configuration Error: VITE_GOOGLE_CLIENT_ID is missing.");
     return;
   }
 
@@ -46,6 +49,7 @@ export const initDriveAuth = async (callback: (token: string) => void) => {
     tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
       client_id: currentClientId,
       scope: SCOPES,
+      ux_mode: 'popup',
       callback: (tokenResponse: any) => {
         if (tokenResponse.access_token) {
           accessToken = tokenResponse.access_token;
@@ -55,6 +59,19 @@ export const initDriveAuth = async (callback: (token: string) => void) => {
       },
       error_callback: (error: any) => {
         console.error("Vault Auth Fault:", error);
+        // Specifically catch origin mismatch or access denied errors
+        // Note: If the popup shows a 403, this callback might not even fire.
+        if (error.type === 'access_denied' || (error.message && error.message.includes('access_denied'))) {
+            alert(
+                `ACCESS BLOCKED: Origin Mismatch.\n\n` +
+                `The domain "${window.location.origin}" is not authorized.\n\n` +
+                `TROUBLESHOOTING:\n` +
+                `1. Go to Google Cloud Console > Credentials.\n` +
+                `2. Add "${window.location.origin}" to Authorized Origins.\n` +
+                `3. CRITICAL: Ensure there is NO trailing slash (e.g., .dev NOT .dev/).\n` +
+                `4. Wait 5-10 minutes for changes to propagate.`
+            );
+        }
       }
     });
 

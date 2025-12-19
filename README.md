@@ -1,37 +1,40 @@
-# OBSCURA.AI - Deployment Guide
 
-Welcome to the **OBSCURA.AI** setup guide. Follow these steps to make your application live on Cloudflare Pages.
+# OBSCURA.AI - Deployment & Configuration Guide
 
-## PHASE 1: Google Identity Setup (Login)
+## 🚨 CRITICAL SETUP: Fixing "Error 403: access_denied"
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a project named "Obscura".
-3. Under **APIs & Services > OAuth consent screen**, set to **External** and provide basic app info.
-4. Under **Credentials > Create Credentials > OAuth client ID**, select **Web application**.
-5. Add your domain (e.g., `https://obscura-ai.pages.dev`) to **Authorized JavaScript origins**.
-6. Copy the **Client ID**.
+If you see an **Access Blocked** error when trying to link Google Drive, you MUST configure the **Authorized JavaScript origins** in Google Cloud Console correctly.
 
----
-
-## PHASE 2: Cloudflare Pages Deployment
-
-1. **GitHub**: Push this repository to your GitHub account.
-2. **Cloudflare**: Navigate to **Workers & Pages > Create Application > Pages > Connect to Git**.
-3. **Build Settings**:
-   - **Framework Preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Output directory**: `dist`
-4. **Environment Variables**:
-   - `VITE_GOOGLE_CLIENT_ID`: Your Client ID from Phase 1.
-   - `API_KEY`: Your Google Gemini API Key. This will be used as the default key for all users for basic tasks.
-5. **Deploy**: Click "Save and Deploy".
+1. Go to **[Google Cloud Console > Credentials](https://console.cloud.google.com/apis/credentials)**.
+2. Open your **OAuth 2.0 Client ID**.
+3. Scroll to **Authorized JavaScript origins**.
+4. **ADD YOUR DOMAINS** (Ensure NO trailing slashes!):
+   - ✅ `https://obscura-ai.pages.dev`
+   - ❌ `https://obscura-ai.pages.dev/` (This will FAIL)
+   - ✅ `http://localhost:5173`
+5. Click **Save**. *Note: It may take 5-10 minutes to propagate.*
 
 ---
 
-## SYSTEM ARCHITECTURE NOTE
+## PHASE 1: Google Identity Setup
 
-OBSCURA.AI uses a hybrid key strategy:
-- **Global Key**: Provided via `API_KEY` env var. Used for general analysis and chat.
-- **User Key**: For the **VISIONARY (Pro Image)** module, users are prompted to select their own key via `window.aistudio.openSelectKey()`. This protects your billing for high-cost tasks.
+1. Create a project in [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable **Google Drive API**.
+3. Create OAuth Credentials > **Web application**.
+4. Add the Origins listed above.
+5. Copy the **Client ID**.
 
-**Success!** Your Cinematic AI Suite is ready for production.
+## PHASE 2: Cloudflare/Netlify Deployment
+
+1. **Build Settings**:
+   - Command: `npm run build`
+   - Output Directory: `dist`
+2. **Environment Variables**:
+   - `VITE_GOOGLE_CLIENT_ID`: (From Phase 1)
+   - `API_KEY`: (Your Google Gemini API Key from [aistudio.google.com](https://aistudio.google.com/))
+
+## SYSTEM ARCHITECTURE
+
+- **Gemini Service**: Handles text/image analysis via API Key.
+- **Drive Service**: Handles file storage via OAuth 2.0 (requires Client ID & Origin matching).
+- **One-Tap Sign In**: Used for aesthetic login effect (requires Client ID).

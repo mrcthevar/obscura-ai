@@ -33,7 +33,8 @@ export const streamModuleContent = async (
   moduleId: ModuleId,
   textInput: string,
   imageFile: File | null,
-  onChunk: (text: string) => void
+  onChunk: (text: string) => void,
+  signal?: AbortSignal
 ): Promise<string> => {
   const apiKey = getValidApiKey();
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
@@ -69,6 +70,7 @@ export const streamModuleContent = async (
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal // Pass the abort signal
       }
     );
 
@@ -78,7 +80,6 @@ export const streamModuleContent = async (
         const err = await response.json();
         errorMessage = err.error?.message || errorMessage;
       } catch (e) {
-        // Fallback if response is not JSON (e.g. 503 HTML page)
         errorMessage = `HTTP Error ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMessage);
@@ -89,13 +90,18 @@ export const streamModuleContent = async (
 
     const decoder = new TextDecoder();
     let fullText = '';
+    let buffer = '';
     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n');
+      // Buffering logic to handle split chunks
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      
+      // Keep the last line in the buffer as it might be incomplete
+      buffer = lines.pop() || '';
       
       for (const line of lines) {
         if (line.startsWith('data: ')) {
@@ -107,7 +113,7 @@ export const streamModuleContent = async (
               onChunk(text);
             }
           } catch (e) {
-            // Partial JSON or non-JSON data line
+            // Ignore incomplete or malformed lines
           }
         }
       }
@@ -116,6 +122,9 @@ export const streamModuleContent = async (
     if (!fullText) throw new Error("Synthesis failed to converge.");
     return fullText;
   } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error("Request timed out by operator.");
+    }
     console.error("Gemini Service Error:", error);
     throw new Error(error.message || "Neural uplink failure.");
   }
