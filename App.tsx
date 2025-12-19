@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode } from 'react';
 import { AppState, UserProfile } from './types';
 import Landing from './components/Landing';
@@ -18,9 +17,13 @@ interface ErrorBoundaryState {
 
 // Error Boundary to prevent "Black Screen of Death"
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false, error: null };
+  
+  // Explicitly declare props to satisfy TypeScript if inheritance inference fails
+  declare props: Readonly<ErrorBoundaryProps>;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {

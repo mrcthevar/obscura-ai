@@ -16,11 +16,17 @@ interface ActiveModuleProps {
   onToggleSidebar: () => void;
 }
 
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGenerated, onUpdateHistory, onExitModule, onToggleSidebar }) => {
   const apiKey = useContext(ApiKeyContext);
   const [textInput, setTextInput] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  // Media State (Images or PDFs)
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'application' | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
   const [thinkingState, setThinkingState] = useState<'idle' | 'processing' | 'complete'>('idle');
@@ -86,7 +92,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   // Determine if this module supports file uploads (Image OR Script)
   const isScriptModule = module.id === ModuleId.STORYBOARD || module.id === ModuleId.SUBTEXT;
   const canUpload = module.requiresImage || isScriptModule;
-  const uploadAccept = module.requiresImage ? "image/*" : ".txt,.md,.fountain,.json";
+  const uploadAccept = module.requiresImage ? "image/*" : ".txt,.md,.fountain,.json,.pdf";
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,40 +100,51 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
 
     setErrorToast(null);
 
+    // 1. File Size Guard
+    if (file.size > MAX_FILE_BYTES) {
+        setErrorToast(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Limit is ${MAX_FILE_SIZE_MB}MB.`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+    }
+
     if (module.requiresImage) {
         // Image Mode
         if (!file.type.startsWith('image/')) {
              setErrorToast("This module requires an image file.");
              return;
         }
-        setImageFile(file);
+        setMediaFile(file);
+        setMediaType('image');
         const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result as string);
+        reader.onloadend = () => setMediaPreview(reader.result as string);
         reader.readAsDataURL(file);
     } else {
-        // Text/Script Mode
-        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-             setErrorToast("PDF parsing is currently experimental. Please convert to .txt or .md for best results.");
-             return;
+        // Script Mode
+        if (file.type === 'application/pdf') {
+             setMediaFile(file);
+             setMediaType('application');
+             setMediaPreview(null);
+             setErrorToast("PDF Script attached.");
+        } else {
+             // Text Mode (txt, md, fountain)
+             const validExtensions = ['.txt', '.md', '.fountain', '.json'];
+             const isTextType = file.type.startsWith('text/') || validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+             if (!isTextType) {
+                  setErrorToast("Unsupported format. Use .pdf, .txt, .md, or .fountain.");
+                  return;
+             }
+
+             const reader = new FileReader();
+             reader.onload = (event) => {
+                 const content = event.target?.result as string;
+                 // Inject content directly into the input field for editable text
+                 setTextInput(content); 
+                 setErrorToast("Script text loaded.");
+             };
+             reader.onerror = () => setErrorToast("Failed to read file.");
+             reader.readAsText(file);
         }
-
-        const validExtensions = ['.txt', '.md', '.fountain', '.json'];
-        const isTextType = file.type.startsWith('text/') || validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-
-        if (!isTextType) {
-             setErrorToast("Unsupported format. Please upload .txt, .md, or .fountain.");
-             return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const content = event.target?.result as string;
-            // Inject content directly into the input field
-            setTextInput(content); 
-            setErrorToast("Script successfully loaded.");
-        };
-        reader.onerror = () => setErrorToast("Failed to read file.");
-        reader.readAsText(file);
     }
 
     // Reset input so the same file can be selected again if needed
@@ -137,13 +154,23 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const processOutput = (result: string) => {
     if (module.id === ModuleId.STORYBOARD) {
       try {
-        const frames = JSON.parse(result);
+        // 2. Robust JSON Sanitization
+        // Remove Markdown code blocks if present (e.g. ```json ... ```)
+        let cleanResult = result.trim();
+        if (cleanResult.startsWith('```')) {
+            cleanResult = cleanResult.replace(/^```(json)?/, '').replace(/```$/, '');
+        }
+        
+        const frames = JSON.parse(cleanResult);
         setStoryboardData(Array.isArray(frames) ? frames : []);
       } catch (e) {
+        console.warn("JSON Parse Error", e);
         if (result.trim().startsWith('[')) {
              setErrorToast("Partial storyboard data received. Try simpler input.");
+        } else {
+             // If completely failed to parse JSON, show raw text output as fallback
+             setOutput(result);
         }
-        setOutput(result);
       }
     } else {
       setOutput(result);
@@ -152,7 +179,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
 
   const handleExecute = async (manualInput?: string) => {
     const inputToUse = manualInput || textInput;
-    if (!inputToUse.trim() && !imageFile) return;
+    if (!inputToUse.trim() && !mediaFile) return;
 
     // Cancel previous request if active
     if (abortControllerRef.current) {
@@ -183,7 +210,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       const result = await streamModuleContent(
         module.id, 
         inputToUse, 
-        imageFile,
+        mediaFile, // Pass generic media file
         (chunk) => {
             buffer += chunk;
             if (module.id !== ModuleId.STORYBOARD) setOutput(buffer);
@@ -195,8 +222,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       onResultGenerated(result);
       processOutput(result);
       setTextInput(''); // Only clear input on success
-      setImageFile(null);
-      setImagePreview(null);
+      setMediaFile(null);
+      setMediaType(null);
+      setMediaPreview(null);
       setThinkingState('complete');
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -448,23 +476,29 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         )}
         <div ref={endOfOutputRef} />
       </div>
-    );
-  };
 
-  return (
-    <div className="relative min-h-screen">
-       <MobileHeader title={module.title} onBack={onExitModule} onOpenSettings={onToggleSidebar} />
+      {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
 
-       {renderContent()}
-
-       {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
-
-       <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
+      {/* Monolith Floating Input Console */}
+      <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
-           {imagePreview && (
+           {/* Attachment Preview (Image or PDF) */}
+           {mediaFile && (
              <div className="mb-6 bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-[2rem] p-3 w-fit flex items-center gap-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-slide-up border-b-[var(--accent)]/50">
-               <img src={imagePreview} className="w-12 h-12 rounded-xl object-cover" alt="Upload preview" />
-               <button onClick={() => {setImageFile(null); setImagePreview(null);}} className="text-[var(--text-muted)] hover:text-red-500 pr-3 transition-colors" aria-label="Remove image">✕</button>
+               {mediaType === 'image' && mediaPreview ? (
+                   <img src={mediaPreview} className="w-12 h-12 rounded-xl object-cover" alt="Upload preview" />
+               ) : (
+                   <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-500">
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                   </div>
+               )}
+               <div className="flex flex-col">
+                   <span className="text-[10px] font-bold text-[var(--text-primary)] max-w-[150px] truncate">{mediaFile.name}</span>
+                   <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">{mediaType === 'image' ? 'Visual Ref' : 'Script Doc'}</span>
+                   {/* File Size Indicator */}
+                   <span className="text-[8px] text-[var(--text-muted)] opacity-70">{(mediaFile.size / 1024 / 1024).toFixed(2)} MB</span>
+               </div>
+               <button onClick={() => {setMediaFile(null); setMediaPreview(null); setMediaType(null);}} className="text-[var(--text-muted)] hover:text-red-500 pr-3 transition-colors ml-2" aria-label="Remove attachment">✕</button>
              </div>
            )}
 
@@ -473,13 +507,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                 <button 
                   onClick={() => fileInputRef.current?.click()} 
                   className="p-5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all duration-300" 
-                  title={module.requiresImage ? "Attach Visual Context" : "Upload Script (.txt, .md, .fountain)"}
+                  title={module.requiresImage ? "Attach Visual Context" : "Upload Script (.txt, .md, .pdf)"}
                   aria-label={module.requiresImage ? "Upload Image" : "Upload Script"}
                 >
                   {module.requiresImage ? (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   ) : (
-                    /* Paperclip Icon for Script Attachments */
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                   )}
                 </button>
@@ -502,9 +535,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
 
               <button 
                 onClick={() => handleExecute()}
-                disabled={loading || (!textInput.trim() && !imageFile)}
+                disabled={loading || (!textInput.trim() && !mediaFile)}
                 className={`p-5 m-1 rounded-[1.75rem] transition-all duration-500 shadow-2xl ${
-                   textInput.trim() || imageFile 
+                   textInput.trim() || mediaFile 
                      ? 'bg-[var(--accent)] text-black hover:bg-white active:scale-95 shadow-[var(--accent)]/20' 
                      : 'bg-[var(--bg-studio)] text-[var(--text-muted)] cursor-not-allowed opacity-30'
                 }`}
@@ -521,7 +554,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
            </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -32,7 +32,7 @@ export const fileToGenerativePart = async (file: File): Promise<{ inlineData: { 
 export const streamModuleContent = async (
   moduleId: ModuleId,
   textInput: string,
-  imageFile: File | null,
+  mediaFile: File | null, // Updated from imageFile to mediaFile to support generic attachments
   onChunk: (text: string) => void,
   signal?: AbortSignal
 ): Promise<string> => {
@@ -41,9 +41,9 @@ export const streamModuleContent = async (
   const modelName = 'gemini-3-pro-preview'; 
 
   const parts: any[] = [];
-  if (imageFile) {
-    const imagePart = await fileToGenerativePart(imageFile);
-    parts.push(imagePart);
+  if (mediaFile) {
+    const mediaPart = await fileToGenerativePart(mediaFile);
+    parts.push(mediaPart);
   }
   if (textInput) {
     parts.push({ text: textInput });
