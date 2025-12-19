@@ -49,34 +49,37 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyboardRef = useRef<HTMLDivElement>(null);
   const endOfOutputRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null); // New ref for the container
   const abortControllerRef = useRef<AbortController | null>(null);
   const userHasScrolledUp = useRef(false);
 
-  // Smart Auto-Scroll
+  // Smart Auto-Scroll: Detects manual scrolling to prevent "scroll jacking"
+  useEffect(() => {
+    // Attempt to find the scrollable parent container (Dashboard's overflow-y-auto div)
+    const container = endOfOutputRef.current?.closest('.overflow-y-auto');
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // If distance from bottom is > 100px, user has scrolled up
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      userHasScrolledUp.current = distanceFromBottom > 100;
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to bottom only if user hasn't scrolled up
   useEffect(() => {
     if (thinkingState === 'idle' && !output && storyboardData.length === 0) {
       userHasScrolledUp.current = false;
       return;
     }
 
-    // Only auto-scroll if the user hasn't manually scrolled up
     if (!userHasScrolledUp.current) {
-        endOfOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      endOfOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [output, storyboardData, thinkingState]);
-
-  // Detect manual scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      const threshold = 100;
-      const distanceFromBottom = document.body.scrollHeight - window.scrollY - window.innerHeight;
-      userHasScrolledUp.current = distanceFromBottom > threshold;
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   useEffect(() => {
     if (history.length > 0) {
@@ -514,15 +517,15 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   };
 
   return (
-    <div className="w-full h-full relative" ref={scrollContainerRef}>
+    <>
       <MobileHeader title={module.title} onBack={onExitModule} onOpenSettings={onToggleSidebar} />
 
       {renderContent()}
 
       {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
 
-      {/* Monolith Floating Input Console */}
-      <div className="absolute bottom-12 left-0 right-0 px-8 z-30 pointer-events-none">
+      {/* Monolith Floating Input Console - FIXED POSITIONING */}
+      <div className="fixed bottom-12 left-0 md:left-72 right-0 px-8 z-30 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
            {/* Attachment Preview (Image or PDF) */}
            {mediaFile && (
@@ -596,7 +599,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
            </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
