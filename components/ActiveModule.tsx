@@ -49,11 +49,34 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyboardRef = useRef<HTMLDivElement>(null);
   const endOfOutputRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // New ref for the container
   const abortControllerRef = useRef<AbortController | null>(null);
+  const userHasScrolledUp = useRef(false);
 
+  // Smart Auto-Scroll
   useEffect(() => {
-    endOfOutputRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (thinkingState === 'idle' && !output && storyboardData.length === 0) {
+      userHasScrolledUp.current = false;
+      return;
+    }
+
+    // Only auto-scroll if the user hasn't manually scrolled up
+    if (!userHasScrolledUp.current) {
+        endOfOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [output, storyboardData, thinkingState]);
+
+  // Detect manual scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const threshold = 100;
+      const distanceFromBottom = document.body.scrollHeight - window.scrollY - window.innerHeight;
+      userHasScrolledUp.current = distanceFromBottom > threshold;
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (history.length > 0) {
@@ -70,6 +93,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       setIsFadingOut(false);
       setThinkingStepIndex(0);
       setTimeLeft(45); // Start 45s countdown
+      userHasScrolledUp.current = false; // Reset scroll lock on new generation
       
       interval = setInterval(() => {
         setThinkingStepIndex(prev => prev < module.steps.length - 1 ? prev + 1 : prev);
@@ -154,9 +178,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const processOutput = (result: string) => {
     if (module.id === ModuleId.STORYBOARD) {
       try {
-        // 2. Robust JSON Sanitization
-        // Remove Markdown code blocks if present (e.g. ```json ... ```)
-        let cleanResult = result.trim();
+        // 2. Google-Class Robust JSON Extraction
+        // Instead of just trimming, we look for the first '[' and last ']' to handle preamble text
+        const jsonMatch = result.match(/\[[\s\S]*\]/);
+        let cleanResult = jsonMatch ? jsonMatch[0] : result.trim();
+        
+        // Remove any lingering markdown just in case the regex caught it inside
         if (cleanResult.startsWith('```')) {
             cleanResult = cleanResult.replace(/^```(json)?/, '').replace(/```$/, '');
         }
@@ -194,6 +221,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     setStoryboardData([]);
     setOutput('');
     setErrorToast(null);
+    userHasScrolledUp.current = false;
     
     // Safety Timeout (Client-side)
     const timeoutId = setTimeout(() => {
@@ -311,7 +339,13 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   };
 
   const handleExportPDF = async () => {
-    if (!storyboardRef.current || !window.jspdf) return;
+    // Robust check for dependencies
+    if (!storyboardRef.current) return;
+    if (!window.jspdf || !window.html2canvas) {
+        setErrorToast("Export modules (jsPDF/html2canvas) failed to load from CDN. Check connection.");
+        return;
+    }
+    
     setExporting(true);
     try {
        const { jsPDF } = window.jspdf;
@@ -476,6 +510,14 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         )}
         <div ref={endOfOutputRef} />
       </div>
+    );
+  };
+
+  return (
+    <div className="w-full h-full relative" ref={scrollContainerRef}>
+      <MobileHeader title={module.title} onBack={onExitModule} onOpenSettings={onToggleSidebar} />
+
+      {renderContent()}
 
       {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
 
@@ -554,7 +596,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
            </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

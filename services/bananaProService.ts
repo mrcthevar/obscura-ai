@@ -1,4 +1,5 @@
 
+import { GoogleGenAI } from "@google/genai";
 import { getValidApiKey } from "./geminiService";
 
 export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: string): Promise<string> => {
@@ -11,46 +12,23 @@ export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: str
   }
 
   const apiKey = getValidApiKey();
+  // Create new instance with fresh key
+  const ai = new GoogleGenAI({ apiKey });
   const modelName = 'gemini-3-pro-image-preview';
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: { parts: [{ text: prompt }] },
+        config: {
             imageConfig: {
-              aspectRatio: "16:9",
-              imageSize: "1K"
+                aspectRatio: "16:9",
+                imageSize: "1K"
             }
-          }
-        }),
-      }
-    );
-
-    if (!response.ok) {
-        let errorMessage = "Image synthesis failed.";
-        try {
-            const err = await response.json();
-            if (err.error?.message?.includes("Requested entity was not found")) {
-                await window.aistudio?.openSelectKey();
-                // We could retry here, but throwing nicely is safer to prevent infinite loops
-                throw new Error("License key required. Please select a key and try again.");
-            }
-            errorMessage = err.error?.message || errorMessage;
-        } catch (e: any) {
-             // If JSON parse fails (e.g. 500 HTML) or the specific check fails
-             if (e.message && e.message.includes("License key")) throw e;
-             errorMessage = `HTTP Error ${response.status}: ${response.statusText}`;
         }
-        throw new Error(errorMessage);
-    }
+    });
 
-    const data = await response.json();
-    const parts = data.candidates?.[0]?.content?.parts;
+    const parts = response.candidates?.[0]?.content?.parts;
     
     if (parts) {
       for (const part of parts) {
@@ -63,6 +41,14 @@ export const generateCinematicImage = async (prompt: string, _apiKeyIgnored: str
     }
     throw new Error("No image data found in response.");
   } catch (error: any) {
+    // Check if error is related to missing license/permission
+    if (error.message && error.message.includes("Requested entity was not found")) {
+         // Attempt to prompt for key selection again
+         if (window.aistudio) {
+             await window.aistudio.openSelectKey();
+             throw new Error("License key required. Please select a key and try again.");
+         }
+    }
     console.error("Image Gen Error:", error);
     throw new Error(error.message || "Failed to generate image.");
   }
