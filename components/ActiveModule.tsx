@@ -154,7 +154,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       clearTimeout(timeoutId);
       onResultGenerated(result);
       processOutput(result);
-      setTextInput('');
+      setTextInput(''); // Only clear if success
       setImageFile(null);
       setImagePreview(null);
       setThinkingState('complete');
@@ -185,6 +185,17 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       e.preventDefault();
       handleExecute();
     }
+  };
+
+  const handleCopy = () => {
+    if (!output) return;
+    // Strip HTML for clipboard but keep logic simple
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = output;
+    const cleanText = tmp.textContent || tmp.innerText || "";
+    navigator.clipboard.writeText(cleanText).then(() => {
+      // Could show a mini-toast here if needed
+    });
   };
 
   const handleEditFrame = (index: number) => {
@@ -310,7 +321,15 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         )}
 
         {output && module.id !== ModuleId.STORYBOARD && (
-          <div className="bg-[var(--bg-card)] border border border-[var(--border-subtle)] rounded-[3rem] p-12 shadow-sm animate-slide-up backdrop-blur-[2px]">
+          <div className="bg-[var(--bg-card)] border border border-[var(--border-subtle)] rounded-[3rem] p-12 shadow-sm animate-slide-up backdrop-blur-[2px] relative group">
+             <button 
+                onClick={handleCopy}
+                className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity p-3 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--bg-studio)] rounded-xl border border-[var(--border-subtle)]"
+                aria-label="Copy output to clipboard"
+                title="Copy to Clipboard"
+             >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+             </button>
              <div 
                className="prose prose-invert max-w-none text-[var(--text-secondary)] font-inter text-sm leading-[1.8] marker:text-[var(--accent)]"
                dangerouslySetInnerHTML={{ __html: output }}
@@ -325,7 +344,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                   <h3 className="text-4xl font-bold tracking-tighter">Visual Archive</h3>
                   <p className="text-[var(--text-muted)] text-sm mt-2 font-light tracking-wide">Analysis Log // Sequence 01</p>
                 </div>
-                <button onClick={handleExportPDF} disabled={exporting} className="bg-[var(--text-primary)] text-[var(--bg-studio)] px-8 py-3 rounded-[1.25rem] text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95 shadow-xl">
+                <button onClick={handleExportPDF} disabled={exporting} className="bg-[var(--text-primary)] text-[var(--bg-studio)] px-8 py-3 rounded-[1.25rem] text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95 shadow-xl" aria-label="Export PDF Dossier">
                   {exporting ? 'Processing' : 'Export Dossier'}
                 </button>
              </div>
@@ -345,13 +364,13 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                            </div>
                          )}
                          {data.generatedImage ? (
-                           <img src={data.generatedImage} alt="" className="w-full h-full object-cover" />
+                           <img src={data.generatedImage} alt={`Frame ${idx+1}: ${data.description}`} className="w-full h-full object-cover" />
                          ) : (
                            <div className="p-12 w-full h-full opacity-90 scale-105 group-hover:scale-100 transition-transform duration-1000" dangerouslySetInnerHTML={{ __html: data.svg }} />
                          )}
                          <div className="absolute top-6 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-all translate-y-3 group-hover:translate-y-0">
                             {!data.generatedImage && (
-                              <button onClick={() => handleGenerateRealImage(idx)} className="bg-black text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-[var(--accent)] hover:text-black transition-all shadow-2xl">
+                              <button onClick={() => handleGenerateRealImage(idx)} className="bg-black text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-[var(--accent)] hover:text-black transition-all shadow-2xl" aria-label="Render High-Fidelity Image">
                                  Render High-Fi
                               </button>
                             )}
@@ -371,7 +390,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                            <div className="space-y-6">
                              <div className="flex justify-between items-center text-left">
                                <span className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] font-mono select-none">F0{idx+1} // {data.shotType}</span>
-                               <button onClick={() => handleEditFrame(idx)} className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors bg-[var(--border-subtle)] p-2 rounded-lg">
+                               <button onClick={() => handleEditFrame(idx)} className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors bg-[var(--border-subtle)] p-2 rounded-lg" aria-label={`Edit Frame ${idx+1}`}>
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                </button>
                              </div>
@@ -413,14 +432,14 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         <div className="max-w-3xl mx-auto pointer-events-auto">
            {imagePreview && (
              <div className="mb-6 bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-[2rem] p-3 w-fit flex items-center gap-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-slide-up border-b-[var(--accent)]/50">
-               <img src={imagePreview} className="w-12 h-12 rounded-xl object-cover" />
-               <button onClick={() => {setImageFile(null); setImagePreview(null);}} className="text-[var(--text-muted)] hover:text-red-500 pr-3 transition-colors">✕</button>
+               <img src={imagePreview} className="w-12 h-12 rounded-xl object-cover" alt="Upload preview" />
+               <button onClick={() => {setImageFile(null); setImagePreview(null);}} className="text-[var(--text-muted)] hover:text-red-500 pr-3 transition-colors" aria-label="Remove image">✕</button>
              </div>
            )}
 
            <div className="bg-[var(--bg-panel)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.5)] flex items-end p-2.5 transition-all duration-500 focus-within:border-[var(--accent)]/50 focus-within:shadow-[0_0_25px_var(--shadow-glow)]">
               {module.requiresImage && (
-                <button onClick={() => fileInputRef.current?.click()} className="p-5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all duration-300" title="Attach Visual Context">
+                <button onClick={() => fileInputRef.current?.click()} className="p-5 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all duration-300" title="Attach Visual Context" aria-label="Upload Image">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </button>
               )}
@@ -436,6 +455,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                    className="w-full bg-transparent text-[var(--text-primary)] placeholder-[var(--text-muted)] text-sm py-5 pl-12 pr-6 outline-none resize-none max-h-48 min-h-[64px] font-mono leading-relaxed"
                    rows={1}
                    style={{ height: 'auto', minHeight: '64px' }}
+                   aria-label="Prompt Input"
                  />
               </div>
 
@@ -447,6 +467,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                      ? 'bg-[var(--accent)] text-black hover:bg-white active:scale-95 shadow-[var(--accent)]/20' 
                      : 'bg-[var(--bg-studio)] text-[var(--text-muted)] cursor-not-allowed opacity-30'
                 }`}
+                aria-label={loading ? 'Processing' : 'Initialize Agent'}
               >
                 {loading ? (
                     <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>

@@ -117,6 +117,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     }
   };
 
+  const handleClearCache = () => {
+    if (confirm('Are you sure you want to clear the local analysis cache? This cannot be undone.')) {
+      localStorage.removeItem('obscura_module_history');
+      setModuleHistory({});
+      alert('Local cache cleared.');
+    }
+  };
+
+  const handleRestartTour = () => {
+    localStorage.removeItem('obscura_tour_completed');
+    window.location.reload();
+  };
+  
+  const handleHomeNavigation = () => {
+    setModuleHistory({});
+    localStorage.removeItem('obscura_module_history');
+    setCurrentView('HOME');
+  };
+
   const activeModule = MODULES.find(m => m.id === currentView);
 
   const cardStyle = `
@@ -133,6 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         <div 
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden animate-fade-in"
           onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
         ></div>
       )}
 
@@ -142,9 +162,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           fixed inset-y-0 left-0 z-50 w-72 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] flex flex-col transition-transform duration-500 ease-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0
         `}
+        aria-label="Sidebar Navigation"
       >
         <div className="h-24 flex items-center px-8">
-          <div onClick={() => setCurrentView('HOME')} className="cursor-pointer flex items-center gap-4 group">
+          <div 
+            onClick={handleHomeNavigation} 
+            className="cursor-pointer flex items-center gap-4 group"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && handleHomeNavigation()}
+            aria-label="Go to Home"
+          >
              <div className="w-10 h-10 bg-[var(--accent)] rounded-2xl flex items-center justify-center text-black font-brand font-bold text-lg shadow-[0_0_25px_var(--shadow-glow)] group-hover:scale-110 transition-transform">O</div>
              <span className="font-brand font-bold tracking-[0.4em] text-sm text-[var(--text-primary)] uppercase">Obscura</span>
           </div>
@@ -152,18 +180,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
         <div className="px-6 mb-8 space-y-3">
            {currentProject ? (
-             <div className="bg-[var(--bg-panel)] rounded-2xl p-5 border border-[var(--border-subtle)]">
+             <div className="bg-[var(--bg-panel)] rounded-2xl p-5 border border-[var(--border-subtle)]" id="project-status">
                <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-[0.3em] font-black font-mono">Archive Active</div>
                <div className="text-sm font-semibold truncate mt-1">{currentProject.name}</div>
                <div className="flex items-center gap-2 mt-4">
                  <div className={`w-2 h-2 rounded-full ${autoSaveStatus === 'saved' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-[var(--accent)] animate-pulse shadow-[0_0_8px_var(--shadow-glow)]'}`}></div>
-                 <span className="text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">{autoSaveStatus}</span>
+                 <span className="text-[10px] text-[var(--text-secondary)] font-mono uppercase tracking-wider">
+                    {autoSaveStatus === 'saved' && isDriveConnected ? '🔒 VAULT SECURE' : autoSaveStatus}
+                 </span>
                </div>
              </div>
            ) : (
              <button 
                 onClick={() => isDriveConnected ? setShowSaveModal(true) : requestDriveToken()}
                 className="w-full py-3.5 bg-transparent border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)] rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95"
+                aria-label={isDriveConnected ? 'Sync Project to Vault' : 'Link Google Drive'}
              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" /></svg>
                 {isDriveConnected ? 'Sync Vault' : 'Link Drive'}
@@ -172,6 +203,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
            <button 
               onClick={handleLoadList}
               className="w-full py-3.5 bg-transparent border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)] rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3"
+              aria-label="Load Archived Project"
            >
               Load Archive
            </button>
@@ -179,12 +211,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
         <div className="flex-1 overflow-y-auto px-4 space-y-1 py-4 border-t border-[var(--border-subtle)] custom-scrollbar">
            <button
-              onClick={() => setCurrentView('HOME')}
+              onClick={handleHomeNavigation}
               className={`w-full flex items-center gap-4 px-5 py-3 rounded-xl text-xs transition-all mb-4 ${
                 currentView === 'HOME' 
                   ? 'bg-[var(--bg-panel)] text-[var(--accent)] font-bold border-l-4 border-[var(--accent)]' 
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]'
               }`}
+              aria-current={currentView === 'HOME' ? 'page' : undefined}
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
               Home
@@ -200,6 +233,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                      ? 'bg-[var(--bg-panel)] text-[var(--accent)] font-bold border-l-4 border-[var(--accent)]' 
                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]'
                  }`}
+                 aria-label={`Open ${mod.title} Module`}
+                 aria-current={currentView === mod.id ? 'page' : undefined}
                >
                  <svg className={`w-4 h-4 transition-all duration-500 ${currentView === mod.id ? 'opacity-100' : 'opacity-20'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={mod.icon} /></svg>
                  {mod.title}
@@ -215,6 +250,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   ? 'bg-[var(--bg-panel)] text-[var(--accent)] font-bold border-l-4 border-[var(--accent)]' 
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]'
               }`}
+              aria-label="Operator's Guide"
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
               Operator's Guide
@@ -226,6 +262,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   ? 'bg-[var(--bg-panel)] text-[var(--accent)] font-bold border-l-4 border-[var(--accent)]' 
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]'
               }`}
+              aria-label="FAQ"
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               F.A.Q.
@@ -237,6 +274,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   ? 'bg-[var(--bg-panel)] text-[var(--accent)] font-bold border-l-4 border-[var(--accent)]' 
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]'
               }`}
+              aria-label="Support"
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               Support Uplink
@@ -249,9 +287,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
            </div>
            <div className="flex-1 min-w-0 text-left">
              <div className="text-xs font-bold truncate">{user.name}</div>
-             <button onClick={onLogout} className="text-[9px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors uppercase tracking-[0.3em] font-black mt-1">Disconnect</button>
+             <button onClick={onLogout} className="text-[9px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors uppercase tracking-[0.3em] font-black mt-1" aria-label="Disconnect">Disconnect</button>
            </div>
-           <button onClick={() => setShowSettings(true)} className="p-3 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors">
+           <button onClick={() => setShowSettings(true)} className="p-3 text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors" aria-label="Open Settings">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
            </button>
         </div>
@@ -266,7 +304,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
            )}
 
            {currentView === 'HOME' && (
-             <div className="p-8 md:p-24 max-w-7xl mx-auto">
+             <div className="p-8 md:p-24 max-w-7xl mx-auto" id="modules-grid">
                 <header className="mb-24 text-center md:text-left">
                    <h1 className="text-4xl md:text-7xl font-bold mb-6 tracking-tighter animate-fade-in">
                      Cinematic Intelligence suite <span className="text-[var(--text-muted)] font-mono text-xl ml-4 select-none hidden md:inline">v1.0.4</span>
@@ -274,7 +312,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 animate-slide-up">
                    {MODULES.map(mod => (
-                     <button key={mod.id} onClick={() => setCurrentView(mod.id)} className={cardStyle}>
+                     <button key={mod.id} onClick={() => setCurrentView(mod.id)} className={cardStyle} aria-label={`Open ${mod.title} Module`}>
                         <div className="p-5 rounded-2xl bg-[var(--accent)]/5 text-[var(--accent)] w-fit mb-12 group-hover:scale-110 group-hover:bg-[var(--accent)]/10 transition-all duration-700 shadow-xl border border-transparent group-hover:border-[var(--accent)]/20">
                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={mod.icon} /></svg>
                         </div>
@@ -303,7 +341,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 history={moduleHistory[activeModule.id] || []}
                 onResultGenerated={(r) => handleModuleResult(activeModule.id, r)}
                 onUpdateHistory={(r) => handleUpdateLastLog(activeModule.id, r)}
-                onExitModule={() => setCurrentView('HOME')}
+                onExitModule={handleHomeNavigation}
                 onToggleSidebar={() => setIsSidebarOpen(true)}
              />
            )}
@@ -321,7 +359,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden text-[var(--text-primary)]" onClick={(e) => e.stopPropagation()}>
              <div className="p-10 border-b border-[var(--border-subtle)] flex justify-between items-center">
                <h3 className="text-2xl font-bold tracking-tight">System Core</h3>
-               <button onClick={() => setShowSettings(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--border-subtle)] p-3 rounded-2xl transition-colors">✕</button>
+               <button onClick={() => setShowSettings(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--border-subtle)] p-3 rounded-2xl transition-colors" aria-label="Close Settings">✕</button>
              </div>
              <div className="p-10 space-y-12 overflow-y-auto max-h-[70vh] custom-scrollbar">
                 <div>
@@ -336,6 +374,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                    </div>
                 </div>
                 <div>
+                  <label className="block text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mb-6 font-mono">Maintenance</label>
+                  <div className="space-y-4">
+                     <button onClick={handleClearCache} className="w-full bg-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-studio)] hover:text-[var(--text-primary)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border border-transparent hover:border-[var(--text-muted)]">Clear Analysis Cache</button>
+                     <button onClick={handleRestartTour} className="w-full bg-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-studio)] hover:text-[var(--text-primary)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border border-transparent hover:border-[var(--text-muted)]">Replay Onboarding</button>
+                  </div>
+                </div>
+                <div>
                   <label className="block text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mb-6 font-mono">Neural Status</label>
                   <div className="bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-3xl p-8 shadow-inner">
                     <div className="flex items-center gap-4 mb-6 text-green-500">
@@ -346,7 +391,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                       Encryption active. All neural processing is secured via your primary environment key.
                     </p>
                     <div className="grid grid-cols-1 gap-3">
-                      <button onClick={onLogout} className="w-full bg-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--text-primary)] hover:text-[var(--bg-studio)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all">Disconnect System</button>
+                      <button onClick={onLogout} className="w-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border border-red-500/20">Disconnect System</button>
                     </div>
                   </div>
                 </div>

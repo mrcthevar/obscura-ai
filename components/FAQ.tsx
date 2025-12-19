@@ -10,6 +10,13 @@ const FAQ: React.FC = () => {
       <div className="space-y-6">
         
         <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-8 rounded-[2rem] hover:border-[var(--accent)]/40 transition-all group shadow-sm">
+          <h3 className="text-lg font-cinzel text-[var(--text-primary)] mb-3 group-hover:text-[var(--accent)] transition-colors">Is my API Key Safe?</h3>
+          <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-light">
+             <strong className="text-[var(--text-primary)]">YES.</strong> Your Google Gemini API Key is stored exclusively in your browser's local environment. OBSCURA.AI servers never see, store, or transmit your keys. We employ a strict "Local-First" security architecture.
+          </p>
+        </div>
+
+        <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-8 rounded-[2rem] hover:border-[var(--accent)]/40 transition-all group shadow-sm">
           <h3 className="text-lg font-cinzel text-[var(--text-primary)] mb-3 group-hover:text-[var(--accent)] transition-colors">Is OBSCURA.AI free to use?</h3>
           <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-light">
             The application interface is free to access. However, because it utilizes Google's advanced Gemini 3 Pro models, it requires a valid API connection. Your keys remain stored within your local environment for absolute privacy.

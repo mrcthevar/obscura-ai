@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode, Component } from 'react';
+import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode } from 'react';
 import { AppState, UserProfile } from './types';
 import Landing from './components/Landing';
 import Dashboard from './components/Dashboard';
@@ -16,7 +16,7 @@ interface ErrorBoundaryState {
 }
 
 // Error Boundary to prevent "Black Screen of Death"
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
