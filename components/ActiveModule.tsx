@@ -37,6 +37,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const [output, setOutput] = useState<string | null>(null);
   const [storyboardData, setStoryboardData] = useState<StoryboardFrame[]>([]);
   
+  // View Modes for frames with both Sketch + Hi-Fi
+  const [frameViewModes, setFrameViewModes] = useState<Record<number, 'sketch' | 'hifi' | 'split'>>({});
+  
   const [thinkingStepIndex, setThinkingStepIndex] = useState(0);
 
   const [editingFrameIndex, setEditingFrameIndex] = useState<number | null>(null);
@@ -51,6 +54,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const endOfOutputRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const userHasScrolledUp = useRef(false);
+  const isAutoGeneratingRef = useRef(false);
 
   // Smart Auto-Scroll: Detects manual scrolling to prevent "scroll jacking"
   useEffect(() => {
@@ -87,6 +91,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     } else {
       setOutput(null);
       setStoryboardData([]);
+      setFrameViewModes({});
     }
   }, [module.id, history]);
 
@@ -178,27 +183,65 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const generateSketchesSequence = async (frames: StoryboardFrame[]) => {
+      if (isAutoGeneratingRef.current) return;
+      isAutoGeneratingRef.current = true;
+      
+      for (let i = 0; i < frames.length; i++) {
+          // Check if needs generation (contains placeholder SVG)
+          if (frames[i].svg && frames[i].svg.includes('PENDING VISUALIZATION')) {
+              setRegeneratingIndex(i);
+              try {
+                  // Short delay to allow UI to render the spinner
+                  await new Promise(r => setTimeout(r, 100));
+                  
+                  const frame = frames[i];
+                  const specs = `${frame.shotType}, ${frame.cameraMovement}, ${frame.composition}`;
+                  const newSketch = await generateSingleFrame(frame.description, specs);
+                  
+                  setStoryboardData(prev => {
+                      const newData = [...prev];
+                      if (newData[i]) {
+                          newData[i] = { ...newData[i], svg: newSketch };
+                      }
+                      // Update history immediately so progress is saved
+                      if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
+                      return newData;
+                  });
+              } catch (e) {
+                  console.warn(`Frame ${i} auto-sketch failed`, e);
+              }
+              setRegeneratingIndex(null);
+          }
+      }
+      isAutoGeneratingRef.current = false;
+  };
+
   const processOutput = (result: string) => {
     if (module.id === ModuleId.STORYBOARD) {
       try {
         // 2. Google-Class Robust JSON Extraction
-        // Instead of just trimming, we look for the first '[' and last ']' to handle preamble text
         const jsonMatch = result.match(/\[[\s\S]*\]/);
         let cleanResult = jsonMatch ? jsonMatch[0] : result.trim();
         
-        // Remove any lingering markdown just in case the regex caught it inside
         if (cleanResult.startsWith('```')) {
             cleanResult = cleanResult.replace(/^```(json)?/, '').replace(/```$/, '');
         }
         
         const frames = JSON.parse(cleanResult);
-        setStoryboardData(Array.isArray(frames) ? frames : []);
+        const validFrames = Array.isArray(frames) ? frames : [];
+        setStoryboardData(validFrames);
+
+        // Trigger Auto-Generation for placeholder frames
+        if (validFrames.length > 0) {
+            generateSketchesSequence(validFrames);
+        }
+
       } catch (e) {
         console.warn("JSON Parse Error", e);
         if (result.trim().startsWith('[')) {
              setErrorToast("Partial storyboard data received. Try simpler input.");
         } else {
-             // If completely failed to parse JSON, show raw text output as fallback
              setOutput(result);
         }
       }
@@ -211,7 +254,6 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     const inputToUse = manualInput || textInput;
     if (!inputToUse.trim() && !mediaFile) return;
 
-    // Cancel previous request if active
     if (abortControllerRef.current) {
         abortControllerRef.current.abort();
     }
@@ -222,9 +264,11 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     setLoading(true);
     setThinkingState('processing');
     setStoryboardData([]);
+    setFrameViewModes({});
     setOutput('');
     setErrorToast(null);
     userHasScrolledUp.current = false;
+    isAutoGeneratingRef.current = false; // Reset lock on new run
     
     // Safety Timeout (Client-side)
     const timeoutId = setTimeout(() => {
@@ -321,6 +365,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       // GENERATE SKETCH: Now uses Image model for charcoal style instead of SVG code
       const newSketchImage = await generateSingleFrame(frame.description, specs);
       
+      // Switch view mode back to sketch on regeneration
+      setFrameViewModes(prev => ({...prev, [index]: 'sketch'}));
+
       if (editingFrameIndex === index && editedFrameData) {
         // Update the edit state preview
         setEditedFrameData({ ...editedFrameData, svg: newSketchImage });
@@ -348,6 +395,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       const prompt = `Cinematic shot, ${frame.shotType}. ${frame.description}. Lighting: ${frame.lightingNotes}. Style: ${frame.composition}. Photorealistic 8k.`;
       const base64Image = await generateCinematicImage(prompt, apiKey);
       
+      // Switch view mode to Hi-Fi on success
+      setFrameViewModes(prev => ({...prev, [index]: 'hifi'}));
+
       if (editingFrameIndex === index && editedFrameData) {
           // Update the edit state preview
           setEditedFrameData({ ...editedFrameData, generatedImage: base64Image });
@@ -380,7 +430,6 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
        const els = storyboardRef.current.querySelectorAll('.storyboard-frame');
        
        const pageWidth = doc.internal.pageSize.getWidth();
-       const pageHeight = doc.internal.pageSize.getHeight();
        
        // 3x2 Grid per page
        let x = 10;
@@ -513,8 +562,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                  const isBusy = regeneratingIndex === idx || generatingImageIndex === idx;
                  const isProcessingImage = generatingImageIndex === idx;
 
-                 // Check if the 'svg' field is actually a base64 image (new sketch style) or legacy SVG
+                 // Check if the 'svg' field is actually a base64 image (new sketch style) or legacy SVG/Placeholder
                  const isSketchImage = data.svg && data.svg.startsWith('data:image');
+                 const hasHiFi = !!data.generatedImage;
+                 
+                 // Default view mode priority: Stored State -> HiFi if exists -> Sketch
+                 const viewMode = frameViewModes[idx] || (hasHiFi ? 'hifi' : 'sketch');
                  
                  return (
                    <div key={idx} className="storyboard-frame flex flex-col gap-3 group">
@@ -536,41 +589,51 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                            </div>
                          )}
 
-                         {/* Image Content */}
-                         {data.generatedImage ? (
-                           <img src={data.generatedImage} alt={`Frame ${idx+1}: ${data.description}`} className="w-full h-full object-cover" />
-                         ) : (
-                           <>
-                             {isSketchImage ? (
-                               // RENDER AS IMAGE (New Charcoal Style)
-                               // Added filter to enforce black/white contrast sketch look
-                               <img src={data.svg} className="w-full h-full object-cover grayscale contrast-125" alt="Storyboard Sketch" />
+                         {/* Image Content Render Logic */}
+                         <div className="w-full h-full relative group/image">
+                             {viewMode === 'split' && hasHiFi ? (
+                                  <div className="flex w-full h-full relative">
+                                      {/* Left: Sketch */}
+                                      <div className="w-1/2 h-full border-r border-black/10 relative overflow-hidden">
+                                         <span className="absolute top-2 left-2 z-10 text-[8px] font-black bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-md">SKETCH</span>
+                                         {isSketchImage ? <img src={data.svg} className="w-full h-full object-cover grayscale contrast-125" alt="Sketch" /> : <div dangerouslySetInnerHTML={{__html: data.svg}} />}
+                                      </div>
+                                      {/* Right: Hi-Fi */}
+                                      <div className="w-1/2 h-full relative overflow-hidden">
+                                         <span className="absolute top-2 right-2 z-10 text-[8px] font-black bg-[var(--accent)] text-black px-1.5 py-0.5 rounded backdrop-blur-md">HI-FI</span>
+                                         <img src={data.generatedImage} className="w-full h-full object-cover" alt="Hi-Fi" />
+                                      </div>
+                                  </div>
+                             ) : (viewMode === 'hifi' && hasHiFi) ? (
+                                  <img src={data.generatedImage} className="w-full h-full object-cover" alt="Hi-Fi" />
                              ) : (
-                               // RENDER AS SVG (Legacy/Placeholder)
-                               <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: data.svg }} />
+                                  // Default Sketch View
+                                  isSketchImage ? <img src={data.svg} className="w-full h-full object-cover grayscale contrast-125" alt="Sketch" /> : <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: data.svg }} />
                              )}
-                           </>
-                         )}
-                         
-                         {/* Top Right Actions (Reset/View) */}
-                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {data.generatedImage && (
-                                <button 
-                                  onClick={() => {
-                                      const newData = [...storyboardData];
-                                      if(isEditing) {
-                                        setEditedFrameData({...data, generatedImage: undefined});
-                                      } else {
-                                        newData[idx] = {...data, generatedImage: undefined};
-                                        setStoryboardData(newData);
-                                      }
-                                  }}
-                                  className="bg-black/50 hover:bg-red-500 text-white p-1.5 rounded backdrop-blur-md transition-colors"
-                                  title="Revert to Sketch"
-                                >
-                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                </button>
-                            )}
+
+                             {/* View Mode Toggle Overlay (Only appears if Hi-Fi exists) */}
+                             {hasHiFi && !isBusy && (
+                                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/80 backdrop-blur-xl p-1 rounded-full border border-white/10 z-20 opacity-0 group-hover/image:opacity-100 transition-all duration-300 translate-y-2 group-hover/image:translate-y-0 shadow-2xl">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); setFrameViewModes(prev => ({...prev, [idx]: 'sketch'})); }}
+                                        className={`px-3 py-1 text-[8px] font-bold rounded-full transition-colors uppercase tracking-wider ${viewMode === 'sketch' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'}`}
+                                      >
+                                        Sketch
+                                      </button>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); setFrameViewModes(prev => ({...prev, [idx]: 'split'})); }}
+                                        className={`px-3 py-1 text-[8px] font-bold rounded-full transition-colors uppercase tracking-wider ${viewMode === 'split' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'}`}
+                                      >
+                                        Both
+                                      </button>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); setFrameViewModes(prev => ({...prev, [idx]: 'hifi'})); }}
+                                        className={`px-3 py-1 text-[8px] font-bold rounded-full transition-colors uppercase tracking-wider ${viewMode === 'hifi' ? 'bg-[var(--accent)] text-black' : 'text-zinc-400 hover:text-white'}`}
+                                      >
+                                        Hi-Fi
+                                      </button>
+                                  </div>
+                             )}
                          </div>
                       </div>
 
@@ -583,7 +646,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                              </div>
                              
                              <textarea 
-                                className="w-full bg-[var(--bg-studio)] text-[var(--text-primary)] p-3 rounded-lg text-xs border border-[var(--border-subtle)] outline-none focus:border-[var(--accent)] font-mono leading-relaxed resize-none" 
+                                className="w-full bg-zinc-900/50 text-white p-3 rounded-lg text-xs border border-white/10 outline-none focus:border-[var(--accent)] font-mono leading-relaxed resize-none shadow-inner" 
                                 rows={4} 
                                 value={data.description} 
                                 onChange={e => setEditedFrameData({...data, description: e.target.value})} 
@@ -594,7 +657,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                                <div className="flex gap-2">
                                   <button 
                                     onClick={() => handleRegenerateFrame(idx)} 
-                                    className="flex-1 bg-[var(--bg-studio)] border border-[var(--border-subtle)] hover:border-[var(--text-muted)] py-2 rounded-lg text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center justify-center gap-2"
+                                    className="flex-1 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all"
                                     title="Regenerate the sketch based on new text"
                                   >
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
@@ -602,7 +665,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                                   </button>
                                   <button 
                                     onClick={() => handleGenerateRealImage(idx)} 
-                                    className="flex-1 bg-black text-white hover:bg-[var(--accent)] hover:text-black py-2 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+                                    className="flex-1 bg-[var(--accent)] text-black hover:bg-white py-2 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg"
                                     title="Generate photorealistic version based on new text"
                                   >
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
@@ -611,8 +674,8 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                                </div>
                                
                                <div className="flex gap-2 pt-2 border-t border-[var(--border-subtle)]">
-                                  <button onClick={() => setEditingFrameIndex(null)} className="flex-1 py-2 text-[9px] font-bold text-[var(--text-muted)] hover:text-red-400">CANCEL</button>
-                                  <button onClick={handleSaveEdit} className="flex-1 bg-[var(--accent)] text-black py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white">COMMIT CHANGES</button>
+                                  <button onClick={() => setEditingFrameIndex(null)} className="flex-1 py-2 text-[9px] font-bold text-zinc-400 hover:text-red-400 bg-transparent">CANCEL</button>
+                                  <button onClick={handleSaveEdit} className="flex-1 bg-zinc-100 text-black py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[var(--accent)] transition-colors">COMMIT CHANGES</button>
                                </div>
                              </div>
                            </div>
@@ -629,7 +692,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                                   {!data.generatedImage && (
                                      <button 
                                        onClick={() => handleGenerateRealImage(idx)} 
-                                       className="bg-[var(--bg-panel)] hover:bg-[var(--accent)] hover:text-black text-[var(--text-muted)] p-1.5 rounded transition-colors"
+                                       className="bg-zinc-800 border border-zinc-700 hover:bg-[var(--accent)] hover:text-black hover:border-[var(--accent)] text-zinc-400 p-1.5 rounded transition-all"
                                        title="Quick Render Hi-Fi"
                                      >
                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -637,7 +700,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                                   )}
                                   <button 
                                     onClick={() => handleEditFrame(idx)} 
-                                    className="bg-[var(--bg-panel)] hover:bg-[var(--text-primary)] hover:text-black text-[var(--text-muted)] p-1.5 rounded transition-colors"
+                                    className="bg-zinc-800 border border-zinc-700 hover:bg-white hover:text-black hover:border-white text-zinc-400 p-1.5 rounded transition-all"
                                     title="Edit Frame"
                                   >
                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>

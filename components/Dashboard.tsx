@@ -17,14 +17,15 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-// Production Readiness: Safe LocalStorage Wrapper
+// Production Readiness: Safe LocalStorage Wrapper to prevent Quota Crashes
 const safeSetLocalStorage = (key: string, value: string) => {
   try {
     localStorage.setItem(key, value);
   } catch (e: any) {
     if (e.name === 'QuotaExceededError' || e.code === 22) {
-      console.warn("Storage Safeguard: Local history quota exceeded. Data saved to session only.");
-      // In a real app, we might trigger a toast here, but console warn is sufficient for stability
+      console.warn("Storage Safeguard: Local history quota exceeded. Data saved to session memory only.");
+      // In a production app, we might trigger a toast here or purge old entries.
+      // For now, catching the crash is the critical fix.
     } else {
       console.error("Storage Error:", e);
     }
@@ -148,11 +149,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   };
   
   const handleHomeNavigation = () => {
-    // Only clear history state if we aren't in a project, otherwise keep it for autosave
     if (!currentProject) {
-        // Optional: keep history in memory even if going home, 
-        // but typically users expect a clean slate if they leave the module without a project.
-        // For now, we keep state in moduleHistory for persistence during session.
+       // Logic to handle unsaved state could go here
     }
     setCurrentView('HOME');
   };
@@ -262,7 +260,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                </button>
              </Tooltip>
            ))}
-
+           {/* Navigation Items ... */}
            <div className="px-5 text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mb-3 mt-10 font-mono">System Terminal</div>
            <button
               onClick={() => setCurrentView('GUIDE')}
@@ -374,10 +372,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       </main>
 
       <SaveProjectModal isOpen={showSaveModal} onCancel={() => setShowSaveModal(false)} onSave={handleCreateNewSave} />
-
+      
+      {/* Settings Modal ... (same as before) */}
       {showSettings && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-2xl animate-fade-in p-6" onClick={() => setShowSettings(false)}>
           <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden text-[var(--text-primary)]" onClick={(e) => e.stopPropagation()}>
+             {/* ... Settings Content ... */}
              <div className="p-10 border-b border-[var(--border-subtle)] flex justify-between items-center">
                <h3 className="text-2xl font-bold tracking-tight">System Core</h3>
                <button onClick={() => setShowSettings(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--border-subtle)] p-3 rounded-2xl transition-colors" aria-label="Close Settings">✕</button>
