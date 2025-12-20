@@ -311,34 +311,58 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   };
 
   const handleRegenerateFrame = async (index: number) => {
-    const frame = editingFrameIndex === index ? editedFrameData! : storyboardData[index];
+    // If editing, use the edited data. If not, use the stored data.
+    const frame = editingFrameIndex === index && editedFrameData ? editedFrameData : storyboardData[index];
+    
     setRegeneratingIndex(index);
     try {
       const specs = `${frame.shotType}, ${frame.cameraMovement}, ${frame.composition}`;
-      const newSvg = await generateSingleFrame(frame.description, specs);
-      const newData = [...storyboardData];
-      if (editingFrameIndex === index) setEditedFrameData({ ...frame, svg: newSvg });
-      else {
-        newData[index] = { ...frame, svg: newSvg };
+      
+      // GENERATE SKETCH: Now uses Image model for charcoal style instead of SVG code
+      const newSketchImage = await generateSingleFrame(frame.description, specs);
+      
+      if (editingFrameIndex === index && editedFrameData) {
+        // Update the edit state preview
+        setEditedFrameData({ ...editedFrameData, svg: newSketchImage });
+      } else {
+        // Update the main list
+        const newData = [...storyboardData];
+        newData[index] = { ...frame, svg: newSketchImage };
         setStoryboardData(newData);
         if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
       }
-    } catch (e) { setErrorToast("Redraw failed. Try again."); } 
-    finally { setRegeneratingIndex(null); }
+    } catch (e) { 
+        setErrorToast("Sketch redraw failed. Try again."); 
+        console.error(e);
+    } finally { 
+        setRegeneratingIndex(null); 
+    }
   };
 
   const handleGenerateRealImage = async (index: number) => {
-    const frame = storyboardData[index];
+    // If editing, use the edited data
+    const frame = editingFrameIndex === index && editedFrameData ? editedFrameData : storyboardData[index];
+    
     setGeneratingImageIndex(index);
     try {
       const prompt = `Cinematic shot, ${frame.shotType}. ${frame.description}. Lighting: ${frame.lightingNotes}. Style: ${frame.composition}. Photorealistic 8k.`;
       const base64Image = await generateCinematicImage(prompt, apiKey);
-      const newData = [...storyboardData];
-      newData[index] = { ...frame, generatedImage: base64Image };
-      setStoryboardData(newData);
-      if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
-    } catch (e) { setErrorToast("Gen failed."); }
-    finally { setGeneratingImageIndex(null); }
+      
+      if (editingFrameIndex === index && editedFrameData) {
+          // Update the edit state preview
+          setEditedFrameData({ ...editedFrameData, generatedImage: base64Image });
+      } else {
+          // Update the main list
+          const newData = [...storyboardData];
+          newData[index] = { ...frame, generatedImage: base64Image };
+          setStoryboardData(newData);
+          if (onUpdateHistory) onUpdateHistory(JSON.stringify(newData));
+      }
+    } catch (e) { 
+        setErrorToast("Gen failed. Check API key/Quota."); 
+    } finally { 
+        setGeneratingImageIndex(null); 
+    }
   };
 
   const handleExportPDF = async () => {
@@ -352,13 +376,42 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     setExporting(true);
     try {
        const { jsPDF } = window.jspdf;
-       const doc = new jsPDF('p', 'mm', 'a4');
+       const doc = new jsPDF('l', 'mm', 'a4'); // Landscape for storyboard
        const els = storyboardRef.current.querySelectorAll('.storyboard-frame');
+       
+       const pageWidth = doc.internal.pageSize.getWidth();
+       const pageHeight = doc.internal.pageSize.getHeight();
+       
+       // 3x2 Grid per page
+       let x = 10;
+       let y = 10;
+       const w = (pageWidth - 40) / 3;
+       
+       // Production Readiness: Fixed 16:9 Aspect Ratio for sketches
+       const h = w * 0.5625; 
+       
+       let count = 0;
+
        for (let i = 0; i < els.length; i++) {
-         if (i > 0) doc.addPage();
+         if (count > 0 && count % 6 === 0) {
+             doc.addPage();
+             x = 10;
+             y = 10;
+         }
+
          const canvas = await window.html2canvas(els[i] as HTMLElement, { scale: 2, backgroundColor: '#ffffff' });
          const imgData = canvas.toDataURL('image/jpeg', 0.9);
-         doc.addImage(imgData, 'JPEG', 10, 10, 190, 0);
+         
+         doc.addImage(imgData, 'JPEG', x, y, w, h);
+         
+         // Move to next grid slot
+         count++;
+         if (count % 3 === 0) {
+             x = 10;
+             y += h + 10;
+         } else {
+             x += w + 10;
+         }
        }
        doc.save(`OBSCURA_${module.id}_Story.pdf`);
     } catch(e) { console.error(e); setErrorToast("Export failed."); }
@@ -382,7 +435,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     }
 
     return (
-      <div className="max-w-5xl mx-auto w-full pb-72 pt-16 px-8">
+      <div className="max-w-7xl mx-auto w-full pb-72 pt-16 px-6 md:px-12">
         {thinkingState !== 'idle' && (
            <div className={`mb-16 bg-[var(--bg-panel)] border border-[var(--border-subtle)] backdrop-blur-xl rounded-[2.5rem] p-8 flex items-center gap-8 shadow-2xl transition-all duration-1000 transform ${isFadingOut ? 'opacity-0 -translate-y-12 scale-95 overflow-hidden' : 'opacity-100'}`}>
               <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
@@ -441,7 +494,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
         )}
 
         {storyboardData.length > 0 && (
-          <div ref={storyboardRef} className="space-y-16 animate-slide-up">
+          <div ref={storyboardRef} className="space-y-12 animate-slide-up">
              <div className="flex justify-between items-end border-b border-[var(--border-subtle)] pb-8">
                 <div>
                   <h3 className="text-4xl font-bold tracking-tighter">Visual Archive</h3>
@@ -452,56 +505,149 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                 </button>
              </div>
              
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+             {/* Revised Layout: 3 Columns, tighter spacing, boxy frames */}
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                {storyboardData.map((frame, idx) => {
                  const isEditing = editingFrameIndex === idx;
                  const data = isEditing ? editedFrameData! : frame;
                  const isBusy = regeneratingIndex === idx || generatingImageIndex === idx;
+                 const isProcessingImage = generatingImageIndex === idx;
 
+                 // Check if the 'svg' field is actually a base64 image (new sketch style) or legacy SVG
+                 const isSketchImage = data.svg && data.svg.startsWith('data:image');
+                 
                  return (
-                   <div key={idx} className="storyboard-frame bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[2.5rem] overflow-hidden group hover:border-[var(--accent)]/30 transition-all duration-700">
-                      <div className="aspect-video bg-white relative flex items-center justify-center overflow-hidden">
+                   <div key={idx} className="storyboard-frame flex flex-col gap-3 group">
+                      {/* Frame Container - High contrast border, strict aspect ratio */}
+                      <div className={`aspect-video relative bg-white border-4 ${isEditing ? 'border-[var(--accent)]' : 'border-[#1a1a1a]'} overflow-hidden transition-colors duration-300`}>
+                         
+                         {/* Frame Number Tag */}
+                         <div className="absolute top-0 left-0 bg-black text-white px-3 py-1 text-[10px] font-black font-mono z-20 border-b border-r border-[#333]">
+                           {idx + 1}
+                         </div>
+
+                         {/* Spinner Overlay */}
                          {isBusy && (
-                           <div className="absolute inset-0 bg-white/95 z-20 flex items-center justify-center">
-                              <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+                           <div className="absolute inset-0 bg-white/95 z-30 flex flex-col items-center justify-center">
+                              <div className="w-8 h-8 border-4 border-black border-t-[var(--accent)] rounded-full animate-spin mb-2"></div>
+                              <span className="text-[9px] font-black uppercase tracking-widest text-black">
+                                {isProcessingImage ? 'Rendering Hi-Fi...' : 'Sketching...'}
+                              </span>
                            </div>
                          )}
+
+                         {/* Image Content */}
                          {data.generatedImage ? (
                            <img src={data.generatedImage} alt={`Frame ${idx+1}: ${data.description}`} className="w-full h-full object-cover" />
                          ) : (
-                           <div className="p-12 w-full h-full opacity-90 scale-105 group-hover:scale-100 transition-transform duration-1000" dangerouslySetInnerHTML={{ __html: data.svg }} />
+                           <>
+                             {isSketchImage ? (
+                               // RENDER AS IMAGE (New Charcoal Style)
+                               // Added filter to enforce black/white contrast sketch look
+                               <img src={data.svg} className="w-full h-full object-cover grayscale contrast-125" alt="Storyboard Sketch" />
+                             ) : (
+                               // RENDER AS SVG (Legacy/Placeholder)
+                               <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: data.svg }} />
+                             )}
+                           </>
                          )}
-                         <div className="absolute top-6 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-all translate-y-3 group-hover:translate-y-0">
-                            {!data.generatedImage && (
-                              <button onClick={() => handleGenerateRealImage(idx)} className="bg-black text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-[var(--accent)] hover:text-black transition-all shadow-2xl" aria-label="Render High-Fidelity Image">
-                                 Render High-Fi
-                              </button>
+                         
+                         {/* Top Right Actions (Reset/View) */}
+                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {data.generatedImage && (
+                                <button 
+                                  onClick={() => {
+                                      const newData = [...storyboardData];
+                                      if(isEditing) {
+                                        setEditedFrameData({...data, generatedImage: undefined});
+                                      } else {
+                                        newData[idx] = {...data, generatedImage: undefined};
+                                        setStoryboardData(newData);
+                                      }
+                                  }}
+                                  className="bg-black/50 hover:bg-red-500 text-white p-1.5 rounded backdrop-blur-md transition-colors"
+                                  title="Revert to Sketch"
+                                >
+                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                </button>
                             )}
                          </div>
                       </div>
 
-                      <div className="p-10 text-sm">
+                      {/* Controls & Description - Moved below image for clarity */}
+                      <div className="space-y-3">
                          {isEditing ? (
-                           <div className="space-y-6">
-                             <textarea className="w-full bg-[var(--bg-studio)] text-[var(--text-primary)] p-5 rounded-3xl text-xs border border-[var(--border-subtle)] outline-none focus:border-[var(--accent)]/50 transition-colors font-mono" rows={3} value={data.description} onChange={e => setEditedFrameData({...data, description: e.target.value})} />
-                             <div className="flex gap-3">
-                               <button onClick={() => handleRegenerateFrame(idx)} className="flex-1 bg-[var(--border-subtle)] py-3 rounded-2xl text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">Redraw</button>
-                               <button onClick={handleSaveEdit} className="flex-1 bg-[var(--accent)] text-black py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em]">Commit</button>
+                           <div className="bg-[var(--bg-panel)] p-4 rounded-xl border border-[var(--border-subtle)] space-y-3 animate-fade-in">
+                             <div className="flex justify-between items-center mb-1">
+                                <span className="text-[9px] font-black text-[var(--accent)] uppercase tracking-wider">Editing Frame {idx+1}</span>
+                             </div>
+                             
+                             <textarea 
+                                className="w-full bg-[var(--bg-studio)] text-[var(--text-primary)] p-3 rounded-lg text-xs border border-[var(--border-subtle)] outline-none focus:border-[var(--accent)] font-mono leading-relaxed resize-none" 
+                                rows={4} 
+                                value={data.description} 
+                                onChange={e => setEditedFrameData({...data, description: e.target.value})} 
+                             />
+                             
+                             {/* Regeneration Toolbar - Always Visible during Edit */}
+                             <div className="flex flex-col gap-2">
+                               <div className="flex gap-2">
+                                  <button 
+                                    onClick={() => handleRegenerateFrame(idx)} 
+                                    className="flex-1 bg-[var(--bg-studio)] border border-[var(--border-subtle)] hover:border-[var(--text-muted)] py-2 rounded-lg text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center justify-center gap-2"
+                                    title="Regenerate the sketch based on new text"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    Redraw Sketch
+                                  </button>
+                                  <button 
+                                    onClick={() => handleGenerateRealImage(idx)} 
+                                    className="flex-1 bg-black text-white hover:bg-[var(--accent)] hover:text-black py-2 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+                                    title="Generate photorealistic version based on new text"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    Render Hi-Fi
+                                  </button>
+                               </div>
+                               
+                               <div className="flex gap-2 pt-2 border-t border-[var(--border-subtle)]">
+                                  <button onClick={() => setEditingFrameIndex(null)} className="flex-1 py-2 text-[9px] font-bold text-[var(--text-muted)] hover:text-red-400">CANCEL</button>
+                                  <button onClick={handleSaveEdit} className="flex-1 bg-[var(--accent)] text-black py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white">COMMIT CHANGES</button>
+                               </div>
                              </div>
                            </div>
                          ) : (
-                           <div className="space-y-6">
-                             <div className="flex justify-between items-center text-left">
-                               <span className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] font-mono select-none">F0{idx+1} // {data.shotType}</span>
-                               <button onClick={() => handleEditFrame(idx)} className="text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors bg-[var(--border-subtle)] p-2 rounded-lg" aria-label={`Edit Frame ${idx+1}`}>
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                               </button>
+                           <div className="group/meta">
+                             <div className="flex justify-between items-start mb-2">
+                               <div className="flex flex-col">
+                                 <span className="text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-tight">{data.shotType}</span>
+                                 <span className="text-[9px] text-[var(--text-muted)] font-mono">{data.cameraMovement}</span>
+                               </div>
+                               
+                               {/* Quick Actions Toolbar */}
+                               <div className="flex gap-1">
+                                  {!data.generatedImage && (
+                                     <button 
+                                       onClick={() => handleGenerateRealImage(idx)} 
+                                       className="bg-[var(--bg-panel)] hover:bg-[var(--accent)] hover:text-black text-[var(--text-muted)] p-1.5 rounded transition-colors"
+                                       title="Quick Render Hi-Fi"
+                                     >
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                     </button>
+                                  )}
+                                  <button 
+                                    onClick={() => handleEditFrame(idx)} 
+                                    className="bg-[var(--bg-panel)] hover:bg-[var(--text-primary)] hover:text-black text-[var(--text-muted)] p-1.5 rounded transition-colors"
+                                    title="Edit Frame"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                  </button>
+                               </div>
                              </div>
-                             <p className="text-[var(--text-primary)] text-left font-medium leading-relaxed line-clamp-3 text-base">{data.description}</p>
-                             <div className="pt-6 border-t border-[var(--border-subtle)] flex gap-6 text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-[0.1em] select-none">
-                               <span className="bg-[var(--border-subtle)] px-2 py-1 rounded">{data.focalLength}</span>
-                               <span className="bg-[var(--border-subtle)] px-2 py-1 rounded">{data.cameraMovement}</span>
-                             </div>
+                             
+                             <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-medium line-clamp-3 group-hover/meta:line-clamp-none transition-all">
+                               {data.description}
+                             </p>
                            </div>
                          )}
                       </div>

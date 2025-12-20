@@ -101,29 +101,50 @@ export const generateSingleFrame = async (
 ): Promise<string> => {
   const apiKey = getValidApiKey();
   const ai = new GoogleGenAI({ apiKey });
-  const modelName = 'gemini-3-pro-preview';
+  
+  // switched to Image model for Sketches instead of text model for SVGs
+  const modelName = 'gemini-3-pro-image-preview'; 
 
-  const prompt = `Draw a professional storyboard frame in SVG format based on this description: "${description}".
-                 Technical Specs: ${shotSpecs}.
-                 Style: loose black pencil sketch on white background.
-                 Return ONLY the raw SVG string (<svg viewBox="0 0 400 300"...>...</svg>). No markdown.`;
+  const prompt = `Create a loose, atmospheric storyboard sketch. 
+                 Style: Charcoal drawing on white paper, rough pencil lines, black and white only. 
+                 Scene Description: ${description}. 
+                 Camera/Composition: ${shotSpecs}.
+                 Do not add text to the image. Focus on lighting, blocking, and composition.`;
 
   try {
+    // Check for paid key via window.aistudio helper if available (since image models require it)
+    if (window.aistudio) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+            await window.aistudio.openSelectKey();
+        }
+    }
+
     const response = await ai.models.generateContent({
         model: modelName,
         contents: { parts: [{ text: prompt }] },
-        config: { temperature: 0.2 }
+        config: { 
+            imageConfig: {
+                aspectRatio: "16:9",
+                imageSize: "1K"
+            }
+        }
     });
 
-    let text = response.text;
+    const parts = response.candidates?.[0]?.content?.parts;
     
-    if (text) {
-      text = text.replace(/```svg/g, '').replace(/```/g, '').trim();
+    if (parts) {
+      for (const part of parts) {
+        if (part.inlineData) {
+          const base64Data = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          return `data:${mimeType};base64,${base64Data}`;
+        }
+      }
     }
-    if (!text) throw new Error("SVG synthesis failed.");
-    return text;
+    throw new Error("No sketch data generated.");
   } catch (error: any) {
-    console.error("Single Frame Generation Error:", error);
+    console.error("Sketch Generation Error:", error);
     throw new Error(error.message || "Neural redraw failed.");
   }
 };

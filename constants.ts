@@ -92,7 +92,7 @@ export const SYSTEM_INSTRUCTIONS = {
   Each object MUST have the following structure:
   {
     "frameNumber": number,
-    "svg": "Complete, self-contained SVG string (<svg viewBox='0 0 400 300' ...>...</svg>). Style: black loose pencil strokes on white background.",
+    "svg": "<svg viewBox='0 0 400 300' xmlns='http://www.w3.org/2000/svg'><rect width='100%' height='100%' fill='#F0F0F0'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='monospace' font-size='14' fill='#AAA'>PENDING VISUALIZATION</text></svg>",
     "description": "Narrative description of what is happening in the frame.",
     "shotType": "e.g., Wide Shot, Close-up, POV, OTS, Insert",
     "cameraMovement": "e.g., Static, Slow Pan Right, Dolly In, Handheld",
@@ -105,7 +105,7 @@ export const SYSTEM_INSTRUCTIONS = {
     "timing": "e.g., 2s, 5s"
   }
   
-  Generate 4-6 frames. Do not return any text outside the JSON.`,
+  Generate 4-6 frames. Do not return any text outside the JSON. Use the exact placeholder SVG string provided above for the 'svg' field in every object.`,
 
   [ModuleId.MASTERCLASS]: `Act as a specialized Archive Historian and Senior Cinematography Professor. The user wants a 'Master Class' breakdown. Do not be generic. Be technically precise, academically rigorous, and deeply insightful.
 
