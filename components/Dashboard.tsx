@@ -11,26 +11,12 @@ import Tooltip from './Tooltip';
 import TourGuide from './TourGuide';
 import { initDriveAuth, requestDriveToken, saveProjectToDrive, listProjectsFromDrive, loadProjectFromDrive, hasDriveToken } from '../services/googleDriveService';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { saveToDB, loadFromDB, clearDBKey } from '../services/storageService';
 
 interface DashboardProps {
   user: UserProfile;
   onLogout: () => void;
 }
-
-// Production Readiness: Safe LocalStorage Wrapper to prevent Quota Crashes
-const safeSetLocalStorage = (key: string, value: string) => {
-  try {
-    localStorage.setItem(key, value);
-  } catch (e: any) {
-    if (e.name === 'QuotaExceededError' || e.code === 22) {
-      console.warn("Storage Safeguard: Local history quota exceeded. Data saved to session memory only.");
-      // In a production app, we might trigger a toast here or purge old entries.
-      // For now, catching the crash is the critical fix.
-    } else {
-      console.error("Storage Error:", e);
-    }
-  }
-};
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [currentView, setCurrentView] = useState<string>('HOME');
@@ -49,26 +35,40 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [projectList, setProjectList] = useState<DriveFile[]>([]);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'error' | 'idle'>('idle');
   const [isLoadingDrive, setIsLoadingDrive] = useState(false);
+  const [isHydrating, setIsHydrating] = useState(true);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('obscura_theme', theme);
   }, [theme]);
 
+  // Initialization & Migration Logic
   useEffect(() => {
     const init = async () => {
+      // 1. Check Drive Token
       if (hasDriveToken()) setIsDriveConnected(true);
       try { await initDriveAuth(() => setIsDriveConnected(true)); } catch (e) {}
+
+      // 2. Hydrate History (Migration: LocalStorage -> IndexedDB)
+      try {
+        const legacyData = localStorage.getItem('obscura_module_history');
+        if (legacyData) {
+            console.log("System: Migrating legacy storage to Neural Database...");
+            const parsed = JSON.parse(legacyData);
+            await saveToDB('obscura_module_history', parsed);
+            setModuleHistory(parsed);
+            localStorage.removeItem('obscura_module_history'); // Cleanup
+        } else {
+            const dbData = await loadFromDB('obscura_module_history');
+            if (dbData) setModuleHistory(dbData);
+        }
+      } catch (e) {
+        console.error("Storage Hydration Error:", e);
+      } finally {
+        setIsHydrating(false);
+      }
     };
     init();
-    
-    try {
-      const stored = localStorage.getItem('obscura_module_history');
-      if (stored) setModuleHistory(JSON.parse(stored));
-    } catch (e) {
-      console.warn("History parse failed, resetting.");
-      localStorage.removeItem('obscura_module_history');
-    }
   }, []);
 
   useEffect(() => {
@@ -90,7 +90,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     setModuleHistory(prev => {
       const current = prev[moduleId] || [];
       const updated = { ...prev, [moduleId]: [...current, result] };
-      safeSetLocalStorage('obscura_module_history', JSON.stringify(updated));
+      // Async Save to IndexedDB (No blocking, No 5MB Limit)
+      saveToDB('obscura_module_history', updated).catch(err => console.error("DB Save Failed", err));
       return updated;
     });
   };
@@ -102,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         const newList = [...list];
         newList[newList.length - 1] = updatedResult;
         const updated = { ...prev, [moduleId]: newList };
-        safeSetLocalStorage('obscura_module_history', JSON.stringify(updated));
+        saveToDB('obscura_module_history', updated).catch(err => console.error("DB Save Failed", err));
         return updated;
      });
   };
@@ -135,9 +136,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     }
   };
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
     if (confirm('Are you sure you want to clear the local analysis cache? This cannot be undone.')) {
-      localStorage.removeItem('obscura_module_history');
+      await clearDBKey('obscura_module_history');
       setModuleHistory({});
       alert('Local cache cleared.');
     }
@@ -149,9 +150,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   };
   
   const handleHomeNavigation = () => {
-    if (!currentProject) {
-       // Logic to handle unsaved state could go here
-    }
     setCurrentView('HOME');
   };
 
@@ -162,6 +160,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     bg-[var(--bg-card)] border border-[var(--border-subtle)] backdrop-blur-[2px]
     hover:border-[var(--accent)]/40 hover:shadow-[0_0_50px_var(--shadow-glow)]
   `;
+
+  if (isHydrating) {
+      return (
+          <div className="h-screen bg-[var(--bg-studio)] flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                  <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)] tracking-widest uppercase">Initializing Database...</span>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="flex h-screen bg-[var(--bg-studio)] text-[var(--text-primary)] font-inter transition-all duration-500 overflow-hidden">

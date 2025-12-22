@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode } from 'react';
 import { AppState, UserProfile } from './types';
 import Landing from './components/Landing';
@@ -37,21 +38,42 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-black text-red-500 flex flex-col items-center justify-center p-8 font-mono text-xs z-50 relative">
-          <div className="max-w-xl w-full">
-            <h1 className="text-xl mb-4 font-bold tracking-widest border-b border-red-900 pb-4">SYSTEM_FAILURE_DETECTED</h1>
-            <p className="mb-4 text-zinc-400">The neural link encountered a critical exception.</p>
-            <pre className="bg-[#111] p-6 rounded-xl overflow-auto border border-red-900/50 mb-8 font-mono text-[10px] leading-relaxed">
+        <div className="min-h-screen bg-[#050505] text-red-500 flex flex-col items-center justify-center p-8 font-mono text-xs z-50 relative overflow-hidden">
+          <div className="absolute inset-0 bg-red-900/5 animate-pulse pointer-events-none"></div>
+          <div className="max-w-xl w-full relative z-10 border border-red-900/30 bg-black/50 backdrop-blur-xl p-10 rounded-[2rem] shadow-[0_0_50px_rgba(220,38,38,0.2)]">
+            <div className="flex items-center gap-4 mb-8 border-b border-red-900/30 pb-6">
+               <div className="w-3 h-3 bg-red-600 rounded-full animate-ping"></div>
+               <h1 className="text-xl font-bold tracking-[0.3em] text-red-500 uppercase">System Failure</h1>
+            </div>
+            
+            <p className="mb-6 text-zinc-400 leading-relaxed font-light">
+               The neural uplink encountered a critical exception. This session has been terminated to protect data integrity.
+            </p>
+            
+            <div className="bg-[#0a0a0a] p-6 rounded-xl overflow-auto border border-red-900/20 mb-8 font-mono text-[10px] leading-relaxed max-h-48 custom-scrollbar">
+              <span className="text-red-700 block mb-2">// ERROR LOG:</span>
               {this.state.error?.toString()}
-            </pre>
+            </div>
+            
             <button 
               onClick={() => {
-                localStorage.clear(); 
+                // Attempt soft reload first, clearing session but keeping local storage
                 window.location.reload();
               }}
-              className="w-full border border-red-500/50 text-red-500 px-6 py-4 hover:bg-red-900/20 rounded-xl transition-all uppercase tracking-[0.2em] font-bold"
+              className="w-full bg-red-600 hover:bg-red-500 text-black px-6 py-4 rounded-xl transition-all uppercase tracking-[0.2em] font-black text-[10px] shadow-lg active:scale-95"
             >
-              Initiate Hard Reset
+              Reboot System
+            </button>
+            <button 
+              onClick={() => {
+                 if (confirm("This will wipe all local data. Continue?")) {
+                    localStorage.clear();
+                    window.location.reload();
+                 }
+              }}
+              className="w-full mt-4 text-red-800 hover:text-red-500 transition-colors uppercase tracking-[0.2em] font-bold text-[9px]"
+            >
+              Perform Hard Reset (Clear Data)
             </button>
           </div>
         </div>
