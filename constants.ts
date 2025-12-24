@@ -1,4 +1,3 @@
-
 import { ModuleDefinition, ModuleId } from './types';
 
 export const MODULES: ModuleDefinition[] = [
@@ -91,10 +90,15 @@ export const SYSTEM_INSTRUCTIONS = {
 
   ### WORKFLOW
   1. **Analyze Input**: Determine if the user provided a "Scene Description" or a "User-Authored Shot List".
-  2. **Conversational Phase (Plain Text Output)**: 
-     - If "Scene Description": Analyze beats, decide on single vs multi-shot coverage, propose a shot list (numbered text), and ASK FOR CONFIRMATION.
+  2. **Conversational Phase (HTML Output)**: 
+     - If "Scene Description": Analyze beats, decide on single vs multi-shot coverage, propose a shot list, and ASK FOR CONFIRMATION.
      - If "Shot List": Validate it, offer improvements, or ask to proceed. Do NOT generate the JSON yet.
      - Engage in a feedback loop until the user says "Yes", "Confirm", "Proceed", or similar.
+     - **FORMATTING**: Use HTML for all conversational output. NO Markdown.
+       - Wrap the analysis in <div class="space-y-4">.
+       - Use <h3 class="text-xl font-cinzel text-[var(--accent)] mb-2"> for headers.
+       - Use <ul class="list-disc pl-5 space-y-2 text-[var(--text-secondary)]"> for shot lists.
+       - Highlight key terms with <strong class="text-[var(--text-primary)]">.
   3. **Generation Phase (JSON Output)**: 
      - ONLY after explicit confirmation, generate the final data.
      - Return a VALID JSON array of objects. Do not include any conversational text outside the JSON.
@@ -117,7 +121,7 @@ export const SYSTEM_INSTRUCTIONS = {
   }
 
   ### RULES
-  - **Path A (Scene Description)**: Analyze beats -> Propose Text Shot List -> Wait for Confirm -> Generate JSON.
+  - **Path A (Scene Description)**: Analyze beats -> Propose HTML Shot List -> Wait for Confirm -> Generate JSON.
   - **Path B (User Shot List)**: Validate -> Ask to Improve/Keep -> Wait for Confirm -> Generate JSON.
   - In conversational phases, speak like a professional DP/Director. Be concise.
   - **CRITICAL**: In the final Generation Phase, your output must START with '[' and END with ']'. No markdown code blocks like \`\`\`json. Just raw JSON.`,
