@@ -74,8 +74,7 @@ export const cleanAndParseJson = (text: string): any => {
 
 export const streamModuleContent = async (
   moduleId: ModuleId,
-  textInput: string,
-  mediaFile: File | null,
+  contents: any[],
   onChunk: (text: string) => void,
   signal?: AbortSignal
 ): Promise<string> => {
@@ -83,15 +82,6 @@ export const streamModuleContent = async (
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
   const modelName = 'gemini-3-pro-preview'; 
-
-  const parts: any[] = [];
-  if (mediaFile) {
-    const mediaPart = await fileToGenerativePart(mediaFile);
-    parts.push(mediaPart);
-  }
-  if (textInput) {
-    parts.push({ text: textInput });
-  }
 
   const config: any = {
     systemInstruction,
@@ -101,13 +91,14 @@ export const streamModuleContent = async (
   };
 
   if (moduleId === ModuleId.STORYBOARD) {
-    config.responseMimeType = "application/json";
+    // We do NOT enforce JSON mimetype here because the first turns are conversational
+    // config.responseMimeType = "application/json"; 
   }
 
   try {
     const result = await ai.models.generateContentStream({
       model: modelName,
-      contents: { parts },
+      contents: contents, // Full history
       config: config,
     });
 

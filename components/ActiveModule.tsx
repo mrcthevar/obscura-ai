@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useContext, useEffect } from 'react';
 import { ModuleDefinition, ModuleId, StoryboardFrame } from '../types';
-import { streamModuleContent, generateSingleFrame, cleanAndParseJson } from '../services/geminiService';
+import { streamModuleContent, generateSingleFrame, cleanAndParseJson, fileToGenerativePart } from '../services/geminiService';
 import { generateCinematicImage } from '../services/bananaProService';
 import { ApiKeyContext } from '../contexts/ApiKeyContext';
 import MobileHeader from './MobileHeader';
@@ -49,6 +50,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const [processingFrames, setProcessingFrames] = useState<Set<number>>(new Set());
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
+  // Conversation History for Multi-turn logic
+  const [conversationHistory, setConversationHistory] = useState<{ role: string, parts: any[] }[]>([]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyboardRef = useRef<HTMLDivElement>(null);
   const endOfOutputRef = useRef<HTMLDivElement>(null);
@@ -56,6 +60,13 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   const userHasScrolledUp = useRef(false);
   const generationQueueRef = useRef<number[]>([]);
   const activeGenerationsRef = useRef<number>(0);
+
+  // Clear history when module changes
+  useEffect(() => {
+    setConversationHistory([]);
+    setStoryboardData([]);
+    setOutput(null);
+  }, [module.id]);
 
   // Smart Auto-Scroll
   useEffect(() => {
@@ -237,11 +248,17 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       try {
         const frames = cleanAndParseJson(result);
         const validFrames = Array.isArray(frames) ? frames : [];
-        setStoryboardData(validFrames);
-        if (validFrames.length > 0) generateSketchesSequence(validFrames);
+        if (validFrames.length > 0) {
+          setStoryboardData(validFrames);
+          setOutput(null); // Clear text if JSON succeeded
+          generateSketchesSequence(validFrames);
+        } else {
+           // Empty array or invalid
+           setOutput(result);
+        }
       } catch (e) {
-        console.warn("JSON Parse Error", e);
         // Fallback: If JSON fails, at least show the raw text so user knows something happened
+        // The user logic might be in conversational mode (text output)
         if (!result.trim().startsWith('[')) setOutput(result);
       }
     } else {
@@ -259,6 +276,9 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
 
     setLoading(true);
     setThinkingState('processing');
+    
+    // We do NOT clear history here to support multi-turn
+    // We clear Output and StoryboardData temporarily to show new result coming
     setStoryboardData([]);
     setFrameViewModes({});
     setOutput('');
@@ -268,6 +288,25 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     activeGenerationsRef.current = 0;
     setProcessingFrames(new Set());
     
+    // Build the user message for this turn
+    const parts: any[] = [];
+    if (mediaFile) {
+      // We must await conversion here to persist it in history state
+      try {
+          const mediaPart = await fileToGenerativePart(mediaFile);
+          parts.push(mediaPart);
+      } catch (e) {
+          console.error("File processing error", e);
+      }
+    }
+    if (inputToUse) {
+      parts.push({ text: inputToUse });
+    }
+
+    const newUserTurn = { role: 'user', parts };
+    // Optimistic update of history so the API calls sees it
+    const nextHistory = [...conversationHistory, newUserTurn];
+
     const timeoutId = setTimeout(() => {
         if (abortControllerRef.current === controller) {
             controller.abort();
@@ -281,17 +320,33 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     try {
       const result = await streamModuleContent(
         module.id, 
-        inputToUse, 
-        mediaFile, 
+        nextHistory, // Send full history 
         (chunk) => {
             buffer += chunk;
-            if (module.id !== ModuleId.STORYBOARD) setOutput(buffer);
+            // For Storyboard, we don't stream to output directly if we expect JSON,
+            // but for conversation mode we do. We'll stream to output and attempt parse at end.
+            if (module.id !== ModuleId.STORYBOARD) {
+               setOutput(buffer);
+            } else {
+               // For storyboard, show text as it comes (chat mode)
+               // If it starts looking like JSON, we might hide it, but safer to just show text until done
+               setOutput(buffer);
+            }
         },
         controller.signal
       );
       clearTimeout(timeoutId);
+      
+      // Update history with model response
+      setConversationHistory(prev => [
+        ...prev, 
+        newUserTurn,
+        { role: 'model', parts: [{ text: result }] }
+      ]);
+      
       onResultGenerated(result);
       processOutput(result);
+      
       setTextInput(''); 
       setMediaFile(null);
       setMediaType(null);
@@ -481,7 +536,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
            </div>
         )}
 
-        {output && module.id !== ModuleId.STORYBOARD && (
+        {output && !storyboardData.length && (
           <div className="bg-[var(--bg-card)] border border border-[var(--border-subtle)] rounded-[3rem] p-12 shadow-sm animate-slide-up backdrop-blur-[2px] relative group">
              <button onClick={handleCopy} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity p-3 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--bg-studio)] rounded-xl border border-[var(--border-subtle)]">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
