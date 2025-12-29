@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { UserProfile, ModuleId, ProjectData, DriveFile } from '../types';
 import { MODULES } from '../constants';
@@ -161,6 +160,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     hover:border-[var(--accent)]/40 hover:shadow-[0_0_50px_var(--shadow-glow)]
   `;
 
+  const h2Style = "text-3xl md:text-4xl font-bold mb-6 tracking-tighter text-[var(--text-primary)]";
+  const pStyle = "text-sm text-[var(--text-secondary)] leading-relaxed max-w-2xl font-light";
+
   if (isHydrating) {
       return (
           <div className="h-screen bg-[var(--bg-studio)] flex items-center justify-center">
@@ -184,6 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         ></div>
       )}
 
+      {/* Sidebar - Kept Compact for Tool Navigation */}
       <aside 
         id="sidebar-nav"
         className={`
@@ -248,7 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               aria-current={currentView === 'HOME' ? 'page' : undefined}
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-              Home
+              Studio Home
            </button>
 
            <div className="px-5 text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mb-3 mt-6 font-mono">Neural Systems</div>
@@ -331,35 +334,159 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
              </div>
            )}
 
+           {/* --- MAIN DASHBOARD VIEW --- */}
            {currentView === 'HOME' && (
-             <div className="p-8 md:p-24 max-w-7xl mx-auto" id="modules-grid">
-                <header className="mb-24 text-center md:text-left">
-                   <h1 className="text-4xl md:text-7xl font-bold mb-6 tracking-tighter animate-fade-in">
-                     Cinematic Intelligence suite <span className="text-[var(--text-muted)] font-mono text-xl ml-4 select-none hidden md:inline">v1.0.4</span>
+             <div className="p-8 md:p-24 max-w-7xl mx-auto space-y-32" id="modules-grid">
+                
+                {/* 1. HERO SECTION */}
+                <header className="text-center md:text-left space-y-8">
+                   <div className="inline-block mb-4 text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em] font-mono">
+                      v1.0.4 · SYSTEM ONLINE · SYS_READY
+                   </div>
+                   <h1 className="text-5xl md:text-8xl font-bold tracking-tighter animate-fade-in text-[var(--text-primary)] leading-[0.9]">
+                     OBSCURA Studio
                    </h1>
-                </header>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 animate-slide-up">
-                   {MODULES.map(mod => (
-                     <button key={mod.id} onClick={() => setCurrentView(mod.id)} className={cardStyle} aria-label={`Open ${mod.title} Module`}>
-                        <div className="p-5 rounded-2xl bg-[var(--accent)]/5 text-[var(--accent)] w-fit mb-12 group-hover:scale-110 group-hover:bg-[var(--accent)]/10 transition-all duration-700 shadow-xl border border-transparent group-hover:border-[var(--accent)]/20">
-                           <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={mod.icon} /></svg>
-                        </div>
-                        <div className="space-y-4">
-                           <h3 className="text-3xl font-bold tracking-tighter group-hover:text-[var(--accent)] transition-colors duration-500">{mod.title}</h3>
-                           <p className="text-sm text-[var(--text-secondary)] leading-relaxed min-h-[5rem] group-hover:text-[var(--text-primary)] transition-colors duration-500">
-                             {mod.description}
-                           </p>
-                        </div>
-                        <div className="mt-12 pt-8 border-t border-[var(--border-subtle)] flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-4 group-hover:translate-y-0">
-                           <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.4em] flex items-center gap-3">
-                              Initialize
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                           </span>
-                           <span className="text-[9px] text-[var(--text-muted)] font-mono select-none uppercase tracking-widest">Sys_Ready</span>
-                        </div>
+                   <p className="text-lg md:text-xl text-[var(--text-secondary)] font-light max-w-3xl leading-relaxed">
+                     AI tools for cinematic preproduction. A unified workspace for Directors and DOPs to plan lighting, generate shot lists, and define visual language.
+                   </p>
+                   <div className="flex flex-wrap gap-4 pt-4">
+                     <button onClick={() => setCurrentView(ModuleId.LUX)} className="px-8 py-4 bg-[var(--text-primary)] text-[var(--bg-studio)] font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-[var(--accent)] hover:text-black transition-all active:scale-95">
+                        Launch Studio
                      </button>
-                   ))}
-                </div>
+                     <button onClick={() => setCurrentView('GUIDE')} className="px-8 py-4 border border-[var(--border-subtle)] text-[var(--text-primary)] font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-[var(--bg-panel)] transition-all">
+                        View Sample Project
+                     </button>
+                   </div>
+                </header>
+
+                {/* 2. CINEMATIC SYSTEMS (GRID) */}
+                <section>
+                    <h2 className={h2Style}>Cinematic Systems</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-slide-up">
+                      {MODULES.map(mod => (
+                        <button key={mod.id} onClick={() => setCurrentView(mod.id)} className={cardStyle} aria-label={`Open ${mod.title} Module`}>
+                            <div className="flex justify-between items-start mb-12">
+                                <div className="p-4 rounded-2xl bg-[var(--accent)]/5 text-[var(--accent)] border border-transparent group-hover:border-[var(--accent)]/20 transition-all">
+                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={mod.icon} /></svg>
+                                </div>
+                                <span className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-widest border border-[var(--border-subtle)] px-2 py-1 rounded-full group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30 transition-colors">SYS_READY</span>
+                            </div>
+                            <div className="space-y-3">
+                              <h3 className="text-2xl font-bold tracking-tighter group-hover:text-[var(--accent)] transition-colors duration-500">{mod.title}</h3>
+                              <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">{mod.subtitle}</h4>
+                              <p className="text-sm text-[var(--text-secondary)] leading-relaxed group-hover:text-[var(--text-primary)] transition-colors duration-500 pt-2">
+                                {mod.description}
+                              </p>
+                            </div>
+                            <div className="mt-8 pt-6 border-t border-[var(--border-subtle)] opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-4 group-hover:translate-y-0">
+                                <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.2em]">Open {mod.title} →</span>
+                            </div>
+                        </button>
+                      ))}
+                    </div>
+                </section>
+
+                {/* 3. WORKFLOW OVERVIEW */}
+                <section className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-[3rem] p-12 md:p-20 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                      <svg className="w-64 h-64" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={0.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                   </div>
+                   <h2 className={h2Style}>A pipeline for your next shoot.</h2>
+                   <p className={pStyle + " mb-12"}>
+                      OBSCURA is designed to function as a modular system. Use tools individually for quick tasks, or chain them together for a complete preproduction workflow.
+                   </p>
+                   <div className="space-y-6">
+                      {[
+                        { step: "01", title: "Script → SUBTEXT", desc: "Parse scenes to identify emotional beats and key moments." },
+                        { step: "02", title: "SUBTEXT → STORYBOARD", desc: "Generate shot lists and frames based on those emotional beats." },
+                        { step: "03", title: "STORYBOARD → KINETIC", desc: "Refine the camera movement, rigging choices, and blocking." },
+                        { step: "04", title: "References → LUX", desc: "Reverse-engineer lighting from your location photos or mood board." },
+                        { step: "05", title: "Stills → VISIONARY", desc: "Create cohesive look-dev prompts to finalize the aesthetic." }
+                      ].map((item, idx) => (
+                         <div key={idx} className="flex gap-6 items-start group">
+                            <span className="text-[10px] font-mono text-[var(--accent)] font-bold pt-1 opacity-50 group-hover:opacity-100">{item.step}</span>
+                            <div>
+                               <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1">{item.title}</h4>
+                               <p className="text-xs text-[var(--text-secondary)] font-light">{item.desc}</p>
+                            </div>
+                         </div>
+                      ))}
+                   </div>
+                </section>
+
+                {/* 4. TRUST SECTION */}
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                   <div>
+                      <h2 className={h2Style}>Built for working Cinematographers.</h2>
+                      <div className="space-y-6">
+                         <div className="flex gap-4">
+                            <div className="w-1 h-1 mt-2.5 bg-[var(--accent)] rounded-full shrink-0"></div>
+                            <p className={pStyle}><strong>Designed by Filmmakers:</strong> Tools that understand f-stops, focal lengths, and lighting ratios—not just generic image generation.</p>
+                         </div>
+                         <div className="flex gap-4">
+                            <div className="w-1 h-1 mt-2.5 bg-[var(--accent)] rounded-full shrink-0"></div>
+                            <p className={pStyle}><strong>Efficiency without Compromise:</strong> Speed up the technical prep (shot listing, diagrams) so you can spend more time on creative direction.</p>
+                         </div>
+                         <div className="flex gap-4">
+                            <div className="w-1 h-1 mt-2.5 bg-[var(--accent)] rounded-full shrink-0"></div>
+                            <p className={pStyle}><strong>Production Ready:</strong> Generate assets that are clear enough to hand to a 1st AD, Gaffer, or Operator.</p>
+                         </div>
+                      </div>
+                      <button onClick={() => setCurrentView('GUIDE')} className="mt-8 text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.3em] hover:text-[var(--text-primary)] transition-colors">
+                         See a sample scene walkthrough →
+                      </button>
+                   </div>
+                   <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] h-80 rounded-[2.5rem] flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-[var(--bg-studio)] via-transparent to-[var(--accent)]/10"></div>
+                      <div className="text-center p-8 z-10">
+                         <h3 className="text-4xl font-brand mb-2">OBSCURA</h3>
+                         <p className="text-[10px] font-mono text-[var(--text-muted)] tracking-[0.5em] uppercase">Cinematic Intelligence</p>
+                      </div>
+                   </div>
+                </section>
+
+                {/* 5. HELP & SYSTEM */}
+                <section>
+                   <h2 className={h2Style}>Help, Support, and System.</h2>
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <button onClick={() => setCurrentView('GUIDE')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                         <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">Operator's Guide</h4>
+                         <p className="text-xs text-[var(--text-secondary)] font-light">Deep dive into every system with examples.</p>
+                      </button>
+                      <button onClick={() => setCurrentView('FAQ')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                         <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">F.A.Q.</h4>
+                         <p className="text-xs text-[var(--text-secondary)] font-light">Quick answers regarding API keys and privacy.</p>
+                      </button>
+                      <button onClick={() => setCurrentView('SUPPORT')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                         <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">Support</h4>
+                         <p className="text-xs text-[var(--text-secondary)] font-light">Reach out to the engineering team.</p>
+                      </button>
+                      <button onClick={() => setShowSettings(true)} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                         <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">System Console</h4>
+                         <p className="text-xs text-[var(--text-secondary)] font-light">Advanced settings and status.</p>
+                      </button>
+                   </div>
+                </section>
+
+                {/* 6. FOOTER */}
+                <footer className="pt-24 pb-12 border-t border-[var(--border-subtle)] flex flex-col md:flex-row justify-between gap-12 text-[10px] text-[var(--text-secondary)] font-mono">
+                   <div className="space-y-4">
+                      <div className="flex gap-8">
+                         <button onClick={handleHomeNavigation} className="hover:text-[var(--text-primary)] uppercase tracking-wider">Home</button>
+                         <button onClick={() => setCurrentView(ModuleId.LUX)} className="hover:text-[var(--text-primary)] uppercase tracking-wider">Tools</button>
+                         <button onClick={() => setCurrentView('GUIDE')} className="hover:text-[var(--text-primary)] uppercase tracking-wider">Guide</button>
+                         <button onClick={() => setCurrentView('SUPPORT')} className="hover:text-[var(--text-primary)] uppercase tracking-wider">Support</button>
+                      </div>
+                      <p className="font-light opacity-60">OBSCURA Studio – AI tools for cinematic preproduction.</p>
+                      <p className="font-light opacity-60">© {new Date().getFullYear()} OBSCURA.AI // All rights reserved.</p>
+                   </div>
+                   <div className="text-right space-y-2">
+                      <div className="text-[var(--text-primary)] uppercase tracking-widest">System Console</div>
+                      <div className="text-green-500">Status: OPERATIONAL</div>
+                      <div>Version: 1.0.4</div>
+                   </div>
+                </footer>
+
              </div>
            )}
 
@@ -382,11 +509,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
       <SaveProjectModal isOpen={showSaveModal} onCancel={() => setShowSaveModal(false)} onSave={handleCreateNewSave} />
       
-      {/* Settings Modal ... (same as before) */}
+      {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-2xl animate-fade-in p-6" onClick={() => setShowSettings(false)}>
           <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden text-[var(--text-primary)]" onClick={(e) => e.stopPropagation()}>
-             {/* ... Settings Content ... */}
              <div className="p-10 border-b border-[var(--border-subtle)] flex justify-between items-center">
                <h3 className="text-2xl font-bold tracking-tight">System Core</h3>
                <button onClick={() => setShowSettings(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-[var(--border-subtle)] p-3 rounded-2xl transition-colors" aria-label="Close Settings">✕</button>
