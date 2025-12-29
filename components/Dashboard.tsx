@@ -7,7 +7,6 @@ import FAQ from './FAQ';
 import Support from './Support';
 import SaveProjectModal from './SaveProjectModal';
 import Tooltip from './Tooltip';
-import TourGuide from './TourGuide';
 import { initDriveAuth, requestDriveToken, saveProjectToDrive, listProjectsFromDrive, loadProjectFromDrive, hasDriveToken } from '../services/googleDriveService';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { saveToDB, loadFromDB, clearDBKey } from '../services/storageService';
@@ -142,11 +141,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       alert('Local cache cleared.');
     }
   };
-
-  const handleRestartTour = () => {
-    localStorage.removeItem('obscura_tour_completed');
-    window.location.reload();
-  };
   
   const handleHomeNavigation = () => {
     setCurrentView('HOME');
@@ -176,7 +170,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
   return (
     <div className="flex h-screen bg-[var(--bg-studio)] text-[var(--text-primary)] font-inter transition-all duration-500 overflow-hidden">
-      <TourGuide />
       
       {isSidebarOpen && (
         <div 
@@ -308,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               aria-label="Support"
            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              Support Uplink
+              Support
            </button>
         </div>
 
@@ -533,7 +526,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                   <label className="block text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] mb-6 font-mono">Maintenance</label>
                   <div className="space-y-4">
                      <button onClick={handleClearCache} className="w-full bg-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-studio)] hover:text-[var(--text-primary)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border border-transparent hover:border-[var(--text-muted)]">Clear Analysis Cache</button>
-                     <button onClick={handleRestartTour} className="w-full bg-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-studio)] hover:text-[var(--text-primary)] py-4 rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] transition-all border border-transparent hover:border-[var(--text-muted)]">Replay Onboarding</button>
                   </div>
                 </div>
                 <div>
