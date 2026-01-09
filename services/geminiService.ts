@@ -1,7 +1,11 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { ModuleId } from '../types';
 import { SYSTEM_INSTRUCTIONS } from '../constants';
+import { databaseToolDeclaration } from '../functions/geminiSystemPrompt';
+import { searchDatabase } from '../functions/databaseQueries';
+
+// Callback type for status updates
+type StatusCallback = (isFetching: boolean, status?: string) => void;
 
 export const getValidApiKey = (): string => {
   const win = window as any;
@@ -76,18 +80,22 @@ export const streamModuleContent = async (
   moduleId: ModuleId,
   contents: any[],
   onChunk: (text: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onStatusUpdate?: StatusCallback
 ): Promise<string> => {
   const apiKey = getValidApiKey();
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
   const modelName = 'gemini-3-pro-preview'; 
 
+  // Add tools configuration
+  const tools = [{ functionDeclarations: [databaseToolDeclaration] }];
   const config: any = {
     systemInstruction,
     temperature: 0.7,
     topP: 0.95,
     topK: 40,
+    tools: tools,
   };
 
   if (moduleId === ModuleId.STORYBOARD) {
@@ -104,9 +112,40 @@ export const streamModuleContent = async (
 
     let fullText = '';
     
+    // We need to buffer chunks to detect function calls effectively if they are split (unlikely but safe)
+    // However, google-genai yields chunks that might contain function calls property
+    
     for await (const chunk of result) {
       if (signal?.aborted) {
         throw new Error("Request timed out by operator.");
+      }
+
+      // Check for Function Call
+      const functionCalls = chunk.functionCalls;
+      if (functionCalls && functionCalls.length > 0) {
+        for (const call of functionCalls) {
+           if (call.name === 'query_database') {
+              const { category, searchTerm } = call.args as any;
+              
+              if (onStatusUpdate) onStatusUpdate(true, `Querying Archive: ${category}...`);
+              
+              console.log(`[System] Executing Tool: ${call.name}`, call.args);
+              const dbResult = await searchDatabase(category, searchTerm);
+              
+              if (onStatusUpdate) onStatusUpdate(false);
+              
+              // Recursive call with function response
+              // We append the function call and response to history and stream again
+              const newContents = [
+                ...contents,
+                { role: 'model', parts: [{ functionCall: call }] }, // The model's call
+                { role: 'user', parts: [{ functionResponse: { name: call.name, response: { result: dbResult } } }] } // Our response
+              ];
+              
+              return streamModuleContent(moduleId, newContents, onChunk, signal, onStatusUpdate);
+           }
+        }
+        continue; // Skip text processing if it was a function call
       }
       
       const text = chunk.text;

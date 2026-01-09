@@ -1,9 +1,9 @@
-
 import React, { useState, useRef, useContext, useEffect } from 'react';
 import { ModuleDefinition, ModuleId, StoryboardFrame } from '../types';
 import { streamModuleContent, generateSingleFrame, cleanAndParseJson, fileToGenerativePart } from '../services/geminiService';
 import { generateCinematicImage } from '../services/bananaProService';
 import { ApiKeyContext } from '../contexts/ApiKeyContext';
+import { useDataFetch } from '../contexts/DataFetchContext';
 import MobileHeader from './MobileHeader';
 import Toast from './Toast';
 
@@ -22,6 +22,7 @@ const PARALLEL_GENERATION_LIMIT = 2; // Rate limit protection
 
 const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGenerated, onUpdateHistory, onExitModule, onToggleSidebar }) => {
   const apiKey = useContext(ApiKeyContext);
+  const { setFetchState, isFetching, fetchStatus } = useDataFetch();
   const [textInput, setTextInput] = useState('');
   
   // Media State
@@ -333,7 +334,8 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                setOutput(buffer);
             }
         },
-        controller.signal
+        controller.signal,
+        setFetchState // Pass context callback to service
       );
       clearTimeout(timeoutId);
       
@@ -362,6 +364,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     } finally {
       setLoading(false);
       abortControllerRef.current = null;
+      setFetchState(false); // Ensure we clear fetching status
     }
   };
 
@@ -514,12 +517,12 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
               </div>
               <div className="flex-1 min-w-0 text-left">
                  <h4 className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] mb-1.5 font-mono select-none">
-                    {thinkingState === 'complete' ? 'Synthesis Converged' : 'Neural Processing'}
+                    {thinkingState === 'complete' ? 'Synthesis Converged' : isFetching ? fetchStatus || 'Accessing Archive...' : 'Neural Processing'}
                  </h4>
                  <div className="flex items-center justify-between gap-4">
                    <div className="flex items-center gap-2">
                      <span className="text-xl font-bold truncate tracking-tight">
-                        {thinkingState === 'complete' ? 'Success' : `${module.steps[thinkingStepIndex]}`}
+                        {thinkingState === 'complete' ? 'Success' : isFetching ? 'Retrieving Data' : `${module.steps[thinkingStepIndex]}`}
                      </span>
                      {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)] font-mono text-xl">_</span>}
                    </div>

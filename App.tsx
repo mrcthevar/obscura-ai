@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode } from 'react';
 import { AppState, UserProfile } from './types';
 import Landing from './components/Landing';
@@ -6,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import Gatekeeper from './components/Gatekeeper';
 import FlashlightCursor from './components/FlashlightCursor';
 import { ApiKeyContext } from './contexts/ApiKeyContext';
+import { DataFetchProvider } from './contexts/DataFetchContext';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -173,13 +173,15 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <ApiKeyContext.Provider value={runtimeKey}>
-        <FlashlightCursor />
-        {/* Main Content Container with High Z-Index to sit ABOVE the film grain */}
-        <div className="min-h-screen bg-[#050505] relative z-20">
-          {renderView()}
-        </div>
-      </ApiKeyContext.Provider>
+      <DataFetchProvider>
+        <ApiKeyContext.Provider value={runtimeKey}>
+          <FlashlightCursor />
+          {/* Main Content Container with High Z-Index to sit ABOVE the film grain */}
+          <div className="min-h-screen bg-[#050505] relative z-20">
+            {renderView()}
+          </div>
+        </ApiKeyContext.Provider>
+      </DataFetchProvider>
     </ErrorBoundary>
   );
 };
