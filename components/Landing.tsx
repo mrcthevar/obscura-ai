@@ -100,8 +100,13 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
   }, [activeClientId, handleCredentialResponse]);
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#050505] text-white selection:bg-[var(--accent)]/30 relative overflow-hidden">
-      {/* Background VFX - handled by global CSS but kept safe here */}
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[var(--bg-studio)] text-[var(--text-primary)] selection:bg-[var(--accent)]/30 relative overflow-hidden">
+      {/* Apple-style colorful ambient background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-500/30 blur-3xl"></div>
+        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[60%] rounded-full bg-blue-500/30 blur-3xl"></div>
+        <div className="absolute -bottom-[20%] left-[20%] w-[60%] h-[50%] rounded-full bg-pink-500/30 blur-3xl"></div>
+      </div>
       
       {/* Content Container - Ensure High Z-Index */}
       <div className="w-full max-w-2xl px-12 z-[60] flex flex-col items-center animate-fade-in relative">
@@ -122,7 +127,7 @@ const Landing: React.FC<LandingProps> = ({ onSignIn }) => {
           <div className="flex flex-col items-center gap-6">
             <button 
               onClick={handleGuestLogin}
-              className="w-full py-6 bg-white text-black rounded-3xl font-black text-xs uppercase tracking-[0.5em] shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:bg-[var(--accent)] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all duration-500 active:scale-95 cursor-pointer relative z-[100]"
+              className="w-full py-6 bg-white/10 backdrop-blur-xl border border-white/20 text-[var(--text-primary)] rounded-3xl font-bold text-xs uppercase tracking-[0.5em] shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:shadow-[0_8px_32px_rgba(255,255,255,0.1)] transition-all duration-500 active:scale-95 cursor-pointer relative z-[100]"
             >
               Enter Studio
             </button>

@@ -86,7 +86,7 @@ export const streamModuleContent = async (
   const apiKey = getValidApiKey();
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
-  const modelName = 'gemini-3-pro-preview'; 
+  const modelName = 'gemini-3.1-pro-preview'; 
 
   // Add tools configuration
   const tools = [{ functionDeclarations: [databaseToolDeclaration] }];

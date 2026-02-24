@@ -66,14 +66,21 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-8 text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--bg-studio)] flex flex-col items-center justify-center p-8 text-[var(--text-primary)] relative overflow-hidden">
+      {/* Apple-style colorful ambient background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-500/30 blur-3xl"></div>
+        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[60%] rounded-full bg-blue-500/30 blur-3xl"></div>
+        <div className="absolute -bottom-[20%] left-[20%] w-[60%] h-[50%] rounded-full bg-pink-500/30 blur-3xl"></div>
+      </div>
+      
       <div className="film-grain"></div>
       <div className="cinematic-vignette"></div>
       
       {/* Background Ambience */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--accent)]/[0.05] blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--accent)]/[0.05] blur-3xl rounded-full pointer-events-none z-0"></div>
 
-      <div className="w-full max-w-lg z-50 flex flex-col items-center animate-fade-in">
+      <div className="w-full max-w-lg z-50 flex flex-col items-center animate-fade-in relative z-10">
         <div className="mb-12 text-center">
           <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/5 bg-white/[0.02] mb-8">
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_#F59E0B]"></div>
@@ -103,7 +110,7 @@ const Gatekeeper: React.FC<GatekeeperProps> = ({ onSuccess }) => {
 
           <button 
             type="submit"
-            className="w-full py-5 bg-white text-black rounded-3xl font-black text-xs uppercase tracking-[0.4em] shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:bg-[var(--accent)] hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all duration-500 active:scale-95"
+            className="w-full py-5 bg-white/10 backdrop-blur-xl border border-white/20 text-[var(--text-primary)] rounded-3xl font-bold text-xs uppercase tracking-[0.4em] shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:shadow-[0_8px_32px_rgba(255,255,255,0.1)] transition-all duration-500 active:scale-95"
           >
             Authorize System
           </button>

@@ -177,7 +177,7 @@ const App: React.FC = () => {
         <ApiKeyContext.Provider value={runtimeKey}>
           <FlashlightCursor />
           {/* Main Content Container with High Z-Index to sit ABOVE the film grain */}
-          <div className="min-h-screen bg-[#050505] relative z-20">
+          <div className="min-h-screen bg-[var(--bg-studio)] relative z-20">
             {renderView()}
           </div>
         </ApiKeyContext.Provider>

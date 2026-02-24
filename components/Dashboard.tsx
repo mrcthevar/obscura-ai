@@ -169,7 +169,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   }
 
   return (
-    <div className="flex h-screen bg-[var(--bg-studio)] text-[var(--text-primary)] font-inter transition-all duration-500 overflow-hidden">
+    <div className="flex h-screen bg-[var(--bg-studio)] text-[var(--text-primary)] font-inter transition-all duration-500 overflow-hidden relative">
+      {/* Apple-style colorful ambient background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-500/20 blur-3xl"></div>
+        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[60%] rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute -bottom-[20%] left-[20%] w-[60%] h-[50%] rounded-full bg-pink-500/20 blur-3xl"></div>
+      </div>
       
       {isSidebarOpen && (
         <div 
@@ -183,7 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       <aside 
         id="sidebar-nav"
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-[var(--bg-sidebar)] border-r border-[var(--border-subtle)] flex flex-col transition-transform duration-500 ease-out
+          fixed inset-y-0 left-0 z-50 w-72 bg-[var(--bg-sidebar)] backdrop-blur-2xl border-r border-[var(--border-subtle)] flex flex-col transition-transform duration-500 ease-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0
         `}
         aria-label="Sidebar Navigation"
@@ -319,7 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col relative min-w-0 bg-[var(--bg-studio)]">
+      <main className="flex-1 flex flex-col relative z-10 min-w-0 bg-transparent">
          <div className="flex-1 overflow-y-auto relative custom-scrollbar">
            {isLoadingDrive && (
              <div className="absolute inset-0 bg-[var(--bg-studio)]/80 backdrop-blur-md z-50 flex items-center justify-center">
@@ -380,7 +386,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 </section>
 
                 {/* 3. WORKFLOW OVERVIEW */}
-                <section className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-[3rem] p-12 md:p-20 relative overflow-hidden">
+                <section className="bg-[var(--bg-panel)] backdrop-blur-xl border border-[var(--border-subtle)] rounded-[3rem] p-12 md:p-20 relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.05)]">
                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
                       <svg className="w-64 h-64" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={0.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                    </div>
@@ -429,7 +435,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                          See a sample scene walkthrough →
                       </button>
                    </div>
-                   <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] h-80 rounded-[2.5rem] flex items-center justify-center relative overflow-hidden">
+                   <div className="bg-[var(--bg-panel)] backdrop-blur-xl border border-[var(--border-subtle)] h-80 rounded-[2.5rem] flex items-center justify-center relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.05)]">
                       <div className="absolute inset-0 bg-gradient-to-tr from-[var(--bg-studio)] via-transparent to-[var(--accent)]/10"></div>
                       <div className="text-center p-8 z-10">
                          <h3 className="text-4xl font-brand mb-2">OBSCURA</h3>
@@ -442,19 +448,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <section>
                    <h2 className={h2Style}>Help, Support, and System.</h2>
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <button onClick={() => setCurrentView('GUIDE')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                      <button onClick={() => setCurrentView('GUIDE')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] backdrop-blur-xl hover:bg-[var(--bg-card)] transition-all group shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
                          <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">Operator's Guide</h4>
                          <p className="text-xs text-[var(--text-secondary)] font-light">Deep dive into every system with examples.</p>
                       </button>
-                      <button onClick={() => setCurrentView('FAQ')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                      <button onClick={() => setCurrentView('FAQ')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] backdrop-blur-xl hover:bg-[var(--bg-card)] transition-all group shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
                          <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">F.A.Q.</h4>
                          <p className="text-xs text-[var(--text-secondary)] font-light">Quick answers regarding API keys and privacy.</p>
                       </button>
-                      <button onClick={() => setCurrentView('SUPPORT')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                      <button onClick={() => setCurrentView('SUPPORT')} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] backdrop-blur-xl hover:bg-[var(--bg-card)] transition-all group shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
                          <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">Support</h4>
                          <p className="text-xs text-[var(--text-secondary)] font-light">Reach out to the engineering team.</p>
                       </button>
-                      <button onClick={() => setShowSettings(true)} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] hover:bg-[var(--bg-panel)] transition-all group">
+                      <button onClick={() => setShowSettings(true)} className="text-left p-6 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-panel)] backdrop-blur-xl hover:bg-[var(--bg-card)] transition-all group shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
                          <h4 className="text-sm font-bold mb-2 group-hover:text-[var(--accent)] transition-colors">System Console</h4>
                          <p className="text-xs text-[var(--text-secondary)] font-light">Advanced settings and status.</p>
                       </button>
