@@ -1,4 +1,9 @@
 
+export enum NeuralEngine {
+  PERFORMANCE = 'PERFORMANCE', // Flash
+  PRECISION = 'PRECISION'      // Pro
+}
+
 export enum AppState {
   LANDING = 'LANDING',
   GATEKEEPER = 'GATEKEEPER',

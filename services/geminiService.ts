@@ -1,11 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
-import { ModuleId } from '../types';
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { ModuleId, NeuralEngine } from '../types';
 import { SYSTEM_INSTRUCTIONS } from '../constants';
 import { databaseToolDeclaration } from '../functions/geminiSystemPrompt';
 import { searchDatabase } from '../functions/databaseQueries';
 
 // Callback type for status updates
-type StatusCallback = (isFetching: boolean, status?: string) => void;
+type StatusCallback = (isFetching: boolean, status?: string, thinking?: string) => void;
 
 export const getValidApiKey = (): string => {
   const win = window as any;
@@ -81,15 +81,21 @@ export const streamModuleContent = async (
   contents: any[],
   onChunk: (text: string) => void,
   signal?: AbortSignal,
-  onStatusUpdate?: StatusCallback
+  onStatusUpdate?: StatusCallback,
+  engine: NeuralEngine = NeuralEngine.PRECISION
 ): Promise<string> => {
   const apiKey = getValidApiKey();
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = SYSTEM_INSTRUCTIONS[moduleId];
-  const modelName = 'gemini-3.1-pro-preview'; 
+  
+  // Multi-model strategy for current AI models
+  const modelName = engine === NeuralEngine.PRECISION 
+    ? 'gemini-3.1-pro-preview' 
+    : 'gemini-3.1-flash-preview'; 
 
   // Add tools configuration
   const tools = [{ functionDeclarations: [databaseToolDeclaration] }];
+  
   const config: any = {
     systemInstruction,
     temperature: 0.7,
@@ -97,6 +103,11 @@ export const streamModuleContent = async (
     topK: 40,
     tools: tools,
   };
+
+  // Enable deep reasoning for Precision mode
+  if (engine === NeuralEngine.PRECISION) {
+    config.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
+  }
 
   if (moduleId === ModuleId.STORYBOARD) {
     // We do NOT enforce JSON mimetype here because the first turns are conversational
@@ -118,6 +129,12 @@ export const streamModuleContent = async (
     for await (const chunk of result) {
       if (signal?.aborted) {
         throw new Error("Request timed out by operator.");
+      }
+
+      // Handle Thinking/Reasoning parts
+      const thinking = (chunk.candidates?.[0]?.content?.parts?.find(p => (p as any).thinking) as any)?.thinking?.text;
+      if (thinking && onStatusUpdate) {
+        onStatusUpdate(true, "Neural Reasoning...", thinking);
       }
 
       // Check for Function Call
@@ -142,7 +159,7 @@ export const streamModuleContent = async (
                 { role: 'user', parts: [{ functionResponse: { name: call.name, response: { result: dbResult } } }] } // Our response
               ];
               
-              return streamModuleContent(moduleId, newContents, onChunk, signal, onStatusUpdate);
+              return streamModuleContent(moduleId, newContents, onChunk, signal, onStatusUpdate, engine);
            }
         }
         continue; // Skip text processing if it was a function call

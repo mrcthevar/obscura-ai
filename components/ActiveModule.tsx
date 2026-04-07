@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
-import { ModuleDefinition, ModuleId, StoryboardFrame } from '../types';
+import { ModuleDefinition, ModuleId, StoryboardFrame, NeuralEngine } from '../types';
 import { streamModuleContent, generateSingleFrame, cleanAndParseJson, fileToGenerativePart } from '../services/geminiService';
 import { generateCinematicImage } from '../services/bananaProService';
 import { ApiKeyContext } from '../contexts/ApiKeyContext';
@@ -32,6 +32,8 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
   
   const [loading, setLoading] = useState(false);
   const [thinkingState, setThinkingState] = useState<'idle' | 'processing' | 'complete'>('idle');
+  const [neuralReasoning, setNeuralReasoning] = useState<string | null>(null);
+  const [engine, setEngine] = useState<NeuralEngine>(NeuralEngine.PRECISION);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0); 
 
@@ -277,6 +279,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
 
     setLoading(true);
     setThinkingState('processing');
+    setNeuralReasoning(null);
     
     // We do NOT clear history here to support multi-turn
     // We clear Output and StoryboardData temporarily to show new result coming
@@ -335,7 +338,11 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
             }
         },
         controller.signal,
-        setFetchState // Pass context callback to service
+        (isFetching, status, thinking) => {
+          setFetchState(isFetching, status);
+          if (thinking) setNeuralReasoning(thinking);
+        },
+        engine
       );
       clearTimeout(timeoutId);
       
@@ -501,41 +508,55 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
     return (
       <div className="max-w-7xl mx-auto w-full pb-72 pt-16 px-6 md:px-12">
         {thinkingState !== 'idle' && (
-           <div className={`mb-16 bg-[var(--bg-panel)] border border-[var(--border-subtle)] backdrop-blur-xl rounded-[2.5rem] p-8 flex items-center gap-8 shadow-2xl transition-all duration-1000 transform ${isFadingOut ? 'opacity-0 -translate-y-12 scale-95 overflow-hidden' : 'opacity-100'}`}>
-              <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
-                 {thinkingState === 'complete' ? (
-                   <div className="text-[var(--accent)] animate-scale-in">
-                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                   </div>
-                 ) : (
-                   <>
-                     <div className="absolute inset-0 border-[3px] border-[var(--accent)]/10 rounded-full"></div>
-                     <div className="absolute inset-0 border-[3px] border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
-                     <div className="text-[9px] font-black text-[var(--accent)] font-mono tracking-tighter">{timeLeft}s</div>
-                   </>
-                 )}
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                 <h4 className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] mb-1.5 font-mono select-none">
-                    {thinkingState === 'complete' ? 'Synthesis Converged' : isFetching ? fetchStatus || 'Accessing Archive...' : 'Neural Processing'}
-                 </h4>
-                 <div className="flex items-center justify-between gap-4">
-                   <div className="flex items-center gap-2">
-                     <span className="text-xl font-bold truncate tracking-tight">
-                        {thinkingState === 'complete' ? 'Success' : isFetching ? 'Retrieving Data' : `${module.steps[thinkingStepIndex]}`}
-                     </span>
-                     {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)] font-mono text-xl">_</span>}
-                   </div>
-                   {thinkingState === 'processing' && (
-                     <button 
-                       onClick={handleCancel}
-                       className="px-4 py-2 border border-red-500/30 bg-red-500/10 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
-                     >
-                       Abort
-                     </button>
+           <div className={`mb-16 bg-[var(--bg-panel)] border border-[var(--border-subtle)] backdrop-blur-xl rounded-[2.5rem] p-8 flex flex-col gap-6 shadow-2xl transition-all duration-1000 transform ${isFadingOut ? 'opacity-0 -translate-y-12 scale-95 overflow-hidden' : 'opacity-100'}`}>
+              <div className="flex items-center gap-8">
+                <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
+                   {thinkingState === 'complete' ? (
+                     <div className="text-[var(--accent)] animate-scale-in">
+                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                     </div>
+                   ) : (
+                     <>
+                       <div className="absolute inset-0 border-[3px] border-[var(--accent)]/10 rounded-full"></div>
+                       <div className="absolute inset-0 border-[3px] border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+                       <div className="text-[9px] font-black text-[var(--accent)] font-mono tracking-tighter">{timeLeft}s</div>
+                     </>
                    )}
-                 </div>
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                   <h4 className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.4em] mb-1.5 font-mono select-none">
+                      {thinkingState === 'complete' ? 'Synthesis Converged' : isFetching ? fetchStatus || 'Accessing Archive...' : 'Neural Processing'}
+                   </h4>
+                   <div className="flex items-center justify-between gap-4">
+                     <div className="flex items-center gap-2">
+                       <span className="text-xl font-bold truncate tracking-tight">
+                          {thinkingState === 'complete' ? 'Success' : isFetching ? 'Retrieving Data' : `${module.steps[thinkingStepIndex]}`}
+                       </span>
+                       {thinkingState === 'processing' && <span className="animate-pulse text-[var(--accent)] font-mono text-xl">_</span>}
+                     </div>
+                     {thinkingState === 'processing' && (
+                       <button 
+                         onClick={handleCancel}
+                         className="px-4 py-2 border border-red-500/30 bg-red-500/10 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
+                       >
+                         Abort
+                       </button>
+                     )}
+                   </div>
+                </div>
               </div>
+
+              {neuralReasoning && thinkingState === 'processing' && (
+                <div className="mt-4 p-6 bg-black/20 rounded-2xl border border-white/5 animate-fade-in">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-pulse"></div>
+                    <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] font-mono">Internal Reasoning Trace</span>
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] font-mono leading-relaxed italic opacity-80 line-clamp-4">
+                    {neuralReasoning}
+                  </p>
+                </div>
+              )}
            </div>
         )}
 
@@ -676,6 +697,26 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
       {errorToast && <Toast message={errorToast} onClose={() => setErrorToast(null)} />}
       <div className="fixed bottom-12 left-0 md:left-72 right-0 px-8 z-30 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
+           <div className="flex justify-between items-center mb-4 px-4">
+              <div className="flex bg-[var(--bg-panel)]/80 backdrop-blur-xl border border-[var(--border-subtle)] rounded-full p-1 shadow-lg">
+                <button 
+                  onClick={() => setEngine(NeuralEngine.PERFORMANCE)}
+                  className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-full transition-all ${engine === NeuralEngine.PERFORMANCE ? 'bg-[var(--accent)] text-black' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                >
+                  Performance
+                </button>
+                <button 
+                  onClick={() => setEngine(NeuralEngine.PRECISION)}
+                  className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-full transition-all ${engine === NeuralEngine.PRECISION ? 'bg-[var(--accent)] text-black' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                >
+                  Precision
+                </button>
+              </div>
+              <div className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-widest">
+                Engine: {engine === NeuralEngine.PRECISION ? 'Gemini 3.1 Pro' : 'Gemini 3.1 Flash'}
+              </div>
+           </div>
+
            {mediaFile && (
              <div className="mb-6 bg-[var(--bg-studio)] border border-[var(--border-subtle)] rounded-[2rem] p-3 w-fit flex items-center gap-4 shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-slide-up border-b-[var(--accent)]/50">
                {mediaType === 'image' && mediaPreview ? (
