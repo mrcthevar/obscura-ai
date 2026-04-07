@@ -1,0 +1,38 @@
+name: Generate package-lock.json
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: write
+
+jobs:
+  generate-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate package-lock.json
+        run: |
+          rm -f package-lock.json
+          npm install --package-lock-only
+
+      - name: Commit package-lock.json
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add package-lock.json
+          git diff --staged --quiet || git commit -m 'chore: regenerate package-lock.json'
+          git push
