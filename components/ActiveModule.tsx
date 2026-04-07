@@ -713,7 +713,7 @@ const ActiveModule: React.FC<ActiveModuleProps> = ({ module, history, onResultGe
                 </button>
               </div>
               <div className="text-[9px] font-mono text-[var(--text-muted)] uppercase tracking-widest">
-                Engine: {engine === NeuralEngine.PRECISION ? 'Gemini 3.1 Pro' : 'Gemini 3.1 Flash'}
+                Engine: {engine === NeuralEngine.PRECISION ? 'Gemini 3.1 Pro' : 'Gemini 3 Flash'}
               </div>
            </div>
 

@@ -9,7 +9,7 @@ type StatusCallback = (isFetching: boolean, status?: string, thinking?: string) 
 
 export const getValidApiKey = (): string => {
   const win = window as any;
-  const key = win.process?.env?.API_KEY || localStorage.getItem('obscura_api_key');
+  const key = win.process?.env?.API_KEY || win.process?.env?.GEMINI_API_KEY || localStorage.getItem('obscura_api_key');
   if (!key || key.length < 5) {
     throw new Error("Neural Gate Unauthorized. Please enter a valid Gemini API Key.");
   }
@@ -19,6 +19,7 @@ export const getValidApiKey = (): string => {
 // PRODUCTION FIX: Convert ugly API errors into user-friendly status messages
 const sanitizeError = (error: any): string => {
   const msg = error.message || error.toString();
+  console.error("Original Gemini Error:", error);
   
   if (msg.includes('QuotaFailure') || msg.includes('429') || msg.includes('quota') || msg.includes('resource exhausted')) {
     return "System Capacity Reached: Rate limit exceeded. Please wait 60 seconds before retrying.";
@@ -32,9 +33,13 @@ const sanitizeError = (error: any): string => {
     return "Safety Protocol: Content flagged by safety filters.";
   }
 
-  // If it's a huge raw JSON dump, return a generic error
+  // If it's a huge raw JSON dump, return a generic error but keep the first bit for context
   if (msg.includes('{') && msg.length > 100) {
-      return "Neural Uplink Failure: Connection refused by remote host.";
+      try {
+          const parsed = JSON.parse(msg.substring(msg.indexOf('{')));
+          if (parsed.error?.message) return parsed.error.message;
+      } catch (e) {}
+      return "Neural Uplink Failure: Connection refused by remote host. Check console for details.";
   }
 
   return msg;
@@ -91,23 +96,32 @@ export const streamModuleContent = async (
   // Multi-model strategy for current AI models
   const modelName = engine === NeuralEngine.PRECISION 
     ? 'gemini-3.1-pro-preview' 
-    : 'gemini-3.1-flash-preview'; 
+    : 'gemini-3-flash-preview'; 
 
-  // Add tools configuration
-  const tools = [{ functionDeclarations: [databaseToolDeclaration] }];
+  // Add tools configuration - only if not in Storyboard mode to avoid JSON conflicts
+  const tools = moduleId !== ModuleId.STORYBOARD ? [{ functionDeclarations: [databaseToolDeclaration] }] : undefined;
   
   const config: any = {
     systemInstruction,
     temperature: 0.7,
     topP: 0.95,
     topK: 40,
-    tools: tools,
   };
 
-  // Enable deep reasoning for Precision mode
-  if (engine === NeuralEngine.PRECISION) {
-    config.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
+  if (tools) {
+    config.tools = tools;
   }
+
+  // Ensure contents is a valid array and not empty
+  const validContents = Array.isArray(contents) && contents.length > 0 ? contents : [{ role: 'user', parts: [{ text: 'Hello' }] }];
+
+  // Enable deep reasoning for Precision mode only if it's a Gemini 3 model
+  // Note: gemini-3.1-pro-preview supports this, but we'll let it be default unless specified
+  if (engine === NeuralEngine.PRECISION && modelName.includes('gemini-3')) {
+    // config.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH }; // Let it be default to avoid potential SDK issues
+  }
+
+  console.log(`[Neural Uplink] Initializing ${modelName} with engine ${engine}`);
 
   if (moduleId === ModuleId.STORYBOARD) {
     // We do NOT enforce JSON mimetype here because the first turns are conversational
@@ -117,7 +131,7 @@ export const streamModuleContent = async (
   try {
     const result = await ai.models.generateContentStream({
       model: modelName,
-      contents: contents, // Full history
+      contents: validContents, // Full history
       config: config,
     });
 
