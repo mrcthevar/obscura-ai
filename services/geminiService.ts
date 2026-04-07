@@ -110,6 +110,8 @@ export const streamModuleContent = async (
 
   if (tools) {
     config.tools = tools;
+    // Required when using tools with Gemini 3 series models to handle thought signatures correctly
+    config.toolConfig = { includeServerSideToolInvocations: true };
   }
 
   // Ensure contents is a valid array and not empty
@@ -154,29 +156,40 @@ export const streamModuleContent = async (
       // Check for Function Call
       const functionCalls = chunk.functionCalls;
       if (functionCalls && functionCalls.length > 0) {
-        for (const call of functionCalls) {
-           if (call.name === 'query_database') {
-              const { category, searchTerm } = call.args as any;
-              
-              if (onStatusUpdate) onStatusUpdate(true, `Querying Archive: ${category}...`);
-              
-              console.log(`[System] Executing Tool: ${call.name}`, call.args);
-              const dbResult = await searchDatabase(category, searchTerm);
-              
-              if (onStatusUpdate) onStatusUpdate(false);
-              
-              // Recursive call with function response
-              // We append the function call and response to history and stream again
-              const newContents = [
-                ...contents,
-                { role: 'model', parts: [{ functionCall: call }] }, // The model's call
-                { role: 'user', parts: [{ functionResponse: { name: call.name, response: { result: dbResult } } }] } // Our response
-              ];
-              
-              return streamModuleContent(moduleId, newContents, onChunk, signal, onStatusUpdate, engine);
-           }
+        const modelContent = chunk.candidates?.[0]?.content;
+        
+        // Find the first supported tool call
+        const call = functionCalls.find(c => c.name === 'query_database');
+        
+        if (call && modelContent) {
+          const { category, searchTerm } = call.args as any;
+          
+          if (onStatusUpdate) onStatusUpdate(true, `Querying Archive: ${category}...`);
+          
+          console.log(`[System] Executing Tool: ${call.name}`, call.args);
+          const dbResult = await searchDatabase(category, searchTerm);
+          
+          if (onStatusUpdate) onStatusUpdate(false);
+          
+          // CRITICAL FIX: We MUST include the full modelContent (which contains the thought_signature)
+          // in the history before sending the functionResponse.
+          const newContents = [
+            ...validContents,
+            modelContent,
+            { 
+              role: 'user', 
+              parts: [{ 
+                functionResponse: { 
+                  name: call.name, 
+                  response: { result: dbResult } 
+                } 
+              }] 
+            }
+          ];
+          
+          return streamModuleContent(moduleId, newContents, onChunk, signal, onStatusUpdate, engine);
         }
-        continue; // Skip text processing if it was a function call
+        continue; // Skip text processing if it was a function call turn
       }
       
       const text = chunk.text;
